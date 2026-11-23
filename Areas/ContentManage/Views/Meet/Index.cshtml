@@ -1,0 +1,169 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Index.cshtml";
+}
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <button type="submit" class="layui-btn layui-btn-primary layui-hide" lay-submit lay-filter="data-search-btn"><i class="layui-icon"></i> 搜 索</button>
+        <script type="text/html" id="toolbarDemo"><div class="layui-btn-container" id="toolbar"></div></script>
+        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+        <script type="text/html" id="currentTableBar"></script>
+    </div>
+</div>
+
+<script>
+    layui.use(['jquery', 'form', 'table', 'common', 'commonTable'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            common = layui.common;
+        //权限控制(js是值传递)
+
+        var module = {
+            name:"会议",
+            baseUrl:"/ContentManage/Meet"
+        };
+        wcLoading.close();
+        $(function () {
+            initControl();
+            form.render();
+        });
+        commonTable.createtable({ // 字段
+             elem: '#currentTableId',
+             id: 'currentTableId',
+             url: module.baseUrl + '/GetGridJson',
+             tablename: 'hr_meet',
+             user:{
+                 id: '@ViewData["CurrentUserId"]',
+                 role: '@ViewData["CurrentRoleId"]',
+                 org: '@ViewData["CurrentDeptId"]'
+             },
+             cols: [[
+                 //此处需修改
+                 { type: "checkbox", width: 50, fixed: 'left' },
+             ]],
+             onToolbar:function(obj){
+                var data = table.checkStatus('currentTableId').data;
+                var id = data.length > 0 ?data[0].F_Id:null;
+                if (obj.event === 'add') {  // 监听添加操作
+                                common.openNewTabByIframe({
+                                    title: "添加"+module.name,
+                                    href: module.baseUrl+"/Form",
+                                });
+                }
+                else if (obj.event === 'delete') {
+                                if (data.length == 0) {
+                                    common.modalMsg("未选中数据", "warning");
+                                    return false;
+                                }
+                                var ids = [];
+                                for (var i = 0; i < data.length; i++) {
+                                    ids.push(data[i].F_Id);
+                                }
+                                common.deleteForm({
+                                    url: module.baseUrl+ "/DeleteForm",
+                                    param: { keyValue: ids.join(',') },
+                                    success: function () {
+                                        common.reload('data-search-btn');
+                                    }
+                                });
+                }
+                else if (obj.event === 'edit') {
+                                if (data.length == 0) {
+                                    common.modalMsg("未选中数据", "warning");
+                                    return false;
+                                }
+                                if (data.length > 1) {
+                                    common.modalMsg("只能选择一条编辑", "warning");
+                                    return false;
+                                }
+                                common.openNewTabByIframe({
+                                    title: "编辑"+module.name,
+                                    href: module.baseUrl+"/Form?keyValue=" + id,
+                                });
+                }
+                else if (obj.event === 'details') {
+                                if (data.length == 0) {
+                                    common.modalMsg("未选中数据", "warning");
+                                    return false;
+                                }
+                                if (data.length > 1) {
+                                    common.modalMsg("只能选择一条查看", "warning");
+                                    return false;
+                                }
+                                common.openNewTabByIframe({
+                                    title: "查看"+module.name,
+                                    href: module.baseUrl+ "/Details?keyValue=" + id,
+                                });
+                }
+                else if (obj.event === 'TABLE_SEARCH') {
+                                var _that = $("#searchField");
+                                if (_that.hasClass("layui-hide")) {
+                                    _that.removeClass('layui-hide');
+                                } else {
+                                    _that.addClass('layui-hide');
+                                }
+                                table.resize();
+                }
+             },
+             onEditTool:function(obj){
+                var id = obj.data.F_Id;
+                if (obj.event === 'delete') {
+                    common.deleteForm({
+                        url:  module.baseUrl + "/DeleteForm",
+                        param: { keyValue: id },
+                        success: function () {
+                            obj.del();
+                        }
+                    });
+                }
+                else if (obj.event === 'edit') {
+                    common.openNewTabByIframe({
+                        title: "编辑"+module.name,
+                        href: module.baseUrl + "/Form?keyValue=" + id,
+                    });
+                }
+                else if (obj.event === 'details') {
+                    common.openNewTabByIframe({
+                        title: "查看"+module.name,
+                        href: module.baseUrl + "/Details?keyValue=" + id,
+                    });
+                }
+             }
+         });
+        function initControl() {
+            //绑定数据源
+            //类型为下拉框时
+            $("#CategoryId").bindSelect({
+                url: "/ContentManage/ArticleCategory/GetListJson",
+                id: "F_Id",
+                text: "F_FullName",
+                search: true,
+            });
+        }
+    });
+    function previewImg(obj) {
+        var img = new Image();
+        img.src = obj.src;
+        var height = (!!img.height ? img.height:100) + 50; //获取图片高度
+        var width = (!!img.width ? img.width : 100); //获取图片宽度
+        if (height > 500) { height = 500; };
+        if (width > 500) { width = 500; };
+        var imgHtml = "<img src='" + obj.src + "' style=\"height: " + (height - 43) + "px; width: " + width + "px; line-height: 25px!important;\"/>";
+        //弹出层
+        layer.open({
+            type: 1,
+            shade: 0.8,
+            offset: 'auto',
+            area: [width + 'px', height + 'px'],
+            shadeClose: true,//点击外围关闭弹窗
+            scrollbar: false,//不现实滚动条
+            title: "图片预览", //不显示标题
+            content: imgHtml, //捕获的元素，注意：最好该指定的元素要存放在body最外层，否则可能被其它的相对元素所影响
+            cancel: function () {
+                //layer.msg('捕获就是从页面已经存在的元素上，包裹layer的结构', { time: 5000, icon: 6 });
+            }
+        });
+    }
+</script>

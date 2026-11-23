@@ -1,0 +1,37 @@
+/* 发货明细与汇总共用宽表；小计保留每个字段的原始列位置。 */
+.query-modes{display:flex;align-items:center;gap:4px;flex-shrink:0}.query-modes button{white-space:nowrap;padding:0 7px}.query-modes button[aria-pressed=true]{color:#1689e6;background:#eaf4ff;border-color:#b9dcff}
+.report-bar{gap:16px}.group-options{display:flex;align-items:center;gap:16px;border:0;padding:0;margin:0 auto 0 0;min-width:0}.group-options legend{float:left;line-height:26px;margin-right:14px;color:#8498b6}.group-options label{display:flex;align-items:center;gap:5px;white-space:nowrap}.group-options input{height:14px;margin:0;accent-color:#169bff}
+#report{overflow:hidden}
+#grid{min-height:150px}
+#grid th,#grid td{padding-inline:6px;background:#fff;color:#111;border-color:#d2d2d2}
+#grid thead th{font-weight:600;border-bottom-color:#bdbdbd}
+#grid thead tr:first-child th{height:27px;top:0}
+#grid thead tr:first-child th[rowspan]{height:54px;vertical-align:middle}
+#grid thead tr:nth-child(2) th{height:27px;top:27px}
+#grid .sort{color:#555;margin-left:3px}
+#grid .link{color:inherit;text-decoration:underline;text-underline-offset:2px}
+#grid .link:hover{text-decoration-thickness:2px}
+#grid tbody tr[data-row-id]:hover td{background:#f6f6f6}
+#grid tbody tr.row-selected td{background:#eef2f6}
+#grid tbody .subtotal td,#grid tfoot td{background:#fff;border-top:1px solid #a7a7a7;font-weight:600}
+#grid .is-frozen{position:sticky;left:var(--frozen-left)}
+#grid thead .is-frozen{z-index:5}
+#grid tbody .is-frozen{z-index:1}
+#grid tfoot .is-frozen{z-index:2}
+#grid tr[data-row-id]:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+#delivery-row-menu{position:fixed;z-index:35;min-width:124px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:3px;box-shadow:0 4px 14px #27476529}
+#delivery-row-menu button{display:block;width:100%;min-height:30px;padding:0 12px;border:0;text-align:left;white-space:nowrap}
+#delivery-row-menu button:hover,#delivery-row-menu button:focus-visible{background:#e7f3ff;color:#0788de;outline:none}
+@media print{#delivery-row-menu{display:none!important}}
+.filter-field select{width:100%}.detail-table thead tr:nth-child(2) th{top:27px}
+@media(max-height:850px) and (min-width:761px){.filter-panel{max-height:36vh;overflow:auto}}
+@media(max-width:1050px){.report-bar{flex-wrap:wrap;gap:7px}.report-tools{margin-left:auto}.group-options{gap:10px}.group-options legend{margin-right:6px}}
+@media(max-width:760px){.header-actions #query-btn{white-space:nowrap;padding:0 5px}.filter-panel{max-height:35vh}.report-bar{gap:5px}.query-modes button{font-size:11px;padding:0 6px}.group-options{font-size:11px;gap:8px}.group-options legend{display:none}.report-tools{width:100%}#grid{min-height:130px}.pagination{font-size:11px;gap:3px;padding:3px 5px}}
+@media print{#print-area th,#print-area td{background:#fff;color:#111}#print-area tr.subtotal td{font-weight:600}#print-area thead th{position:static!important}#print-area tfoot{display:table-row-group}}
+/* 发货查询表格选择器 */
+.shipment-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:5px;width:100%;min-width:0;text-align:left;color:#555;padding-inline:7px}
+.shipment-picker-trigger span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.shipment-picker-trigger.has-value{color:#111}.shipment-picker-icon{flex:none}
+.shipment-filter-picker{width:min(570px,calc(100vw - 24px));max-height:80vh;padding:0}.shipment-filter-picker .dialog-body{padding:14px}
+.shipment-picker-search{display:flex;align-items:center;gap:9px;margin-bottom:12px}.shipment-picker-search input{flex:1;min-width:0}
+.shipment-picker-grid{max-height:42vh;overflow:auto}.shipment-picker-grid table{width:100%;border-collapse:collapse}.shipment-picker-grid th,.shipment-picker-grid td{border:1px solid #ccc;padding:6px 8px;text-align:left}.shipment-picker-grid th{position:sticky;top:0;background:#f3f3f3}.shipment-picker-grid td{height:32px}
+.shipment-picker-option{display:block;width:100%;height:auto;text-align:left;padding:4px 6px;border:0;background:none;color:#111}.shipment-picker-option[aria-current=true],.shipment-picker-option:hover,.shipment-picker-option:focus-visible{background:#e8eff4}

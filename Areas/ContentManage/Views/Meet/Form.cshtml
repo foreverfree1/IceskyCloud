@@ -1,0 +1,133 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+
+<body>
+    <div class="layuimini-main"
+        style="height: 40px; background-color:white; border:1px solid #f2f2f2;border-radius:5px; margin:5px 0px; ">
+        <div class="layui-btn-container" style="margin:8px 5px;">
+            @* 新建、编辑、保存、提交|预览、打印|审核、反审|上一条、下一条|关闭 *@
+            <div class="layui-btn-group">
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" alt="打印"
+                    onclick="ToolClick('add')">
+                    <i class="layui-icon layui-icon-list layui-tabicon"></i> 新建
+                </button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" onclick="ToolClick('edit')">
+                    <i class="layui-icon layui-icon-survey layui-tabicon"></i>编辑
+                </button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" onclick="ToolClick('save')">
+                    <i class="layui-icon layui-icon-survey layui-tabicon"></i>保存
+                </button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">提交</button>
+            </div>
+            <div class="layui-btn-group">
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">预览</button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">打印</button>
+            </div>
+            <div class="layui-btn-group">
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">审核</button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">反审</button>
+            </div>
+            <div class="layui-btn-group">
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">上一条</button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm">下一条</button>
+            </div>
+            <div class="layui-btn-group">
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-disabled layui-btn-sm">关闭</button>
+            </div>
+        </div>
+    </div>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-tabform-item">
+                    <div class="layui-col-md2 layui-col-sm2 layui-hide ">
+                        <label class="layui-form-label required">标题</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Title" name="F_Title" autocomplete="off" maxlength="50"
+                                lay-verify="required" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md2 layui-col-sm2 layui-hide ">
+                        <label class="layui-form-label required">开始时间</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_StartTime" name="F_StartTime" autocomplete="off"
+                                lay-verify="required" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-tabform-item text-right layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+            <script type="text/html" id="toolbarDemo">
+                <div class="layui-btn-container" id="toolbar">
+                    <button id="NF-add" name="NF-add" class="layui-btn layui-btn-sm" lay-event="add"><i class="layui-icon">&#xe642;</i>添加</button>
+                    <button id="NF-delete" name="NF-delete" class="layui-btn layui-btn-sm layui-btn-danger layui-hide" lay-event="delete"><i class="layui-icon">&#xe640;</i>删除</button>
+                </div>
+            </script>
+        </div>
+    </div>
+</body>
+
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'optimizeSelectOption', 'common'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            upload = layui.upload,
+            laydate = layui.laydate,
+            wangEditor = layui.wangEditor;
+
+        laydate.render({
+            elem: '#F_StartTime'
+            , trigger: 'click',
+            format: 'yyyy/MM/dd',
+        });
+        var keyValue = $.request("keyValue");
+        common.authorizeFields('adminform');
+        wcLoading.close();
+        $(function () {
+            InitControl();
+            function InitControl() {
+                if (!!keyValue) {
+                    alter(keyValue)
+                    common.ajax({
+                        url: '/MeetManagement/Meet/GetFormJson',
+                        dataType: 'json',
+                        data: { keyValue: keyValue },
+                        async: false,
+                        success: function (data) {
+                            common.val('adminform', data.form);
+                        }
+                    });
+                }
+                form.render();
+            }
+            form.on('submit(saveBtn)', function (data) {
+                var postData = data.field;
+                common.ajax({
+                    type: "POST",
+                    url: '/ContentManage/Meet/SubmitForm?keyValue=' + keyValue + "&encode=" + ((isNaN(keyValue) ?? "") == "" ? "NF-add" : "NF-edit"),
+                    data: { entity: JSON.stringify(postData), keyValue: keyValue },
+                    success: function (data) {
+                        if (data.state == 'error') {
+                            layer.msg(data.message, { icon: 0 })
+                        } else {
+                            keyValue = data.id;
+                            layer.msg("提交成功", { icon: 1 })
+                            common.reloadIframe("/MeetManagement/Meet/Index", "data-search-btn")
+                        }
+                    }
+                })
+                return false;
+            });
+        });
+    });
+    function ToolClick(btn) {
+        if (btn == 'save') {
+            $("#submit").click();
+        }
+    }
+</script>

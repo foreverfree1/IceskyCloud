@@ -1,0 +1,27 @@
+.dye-workspace{height:100%;display:flex;flex-direction:column;padding:5px 3px;gap:6px;min-height:0}
+.dye-search-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 20px}
+.dye-field{display:grid;grid-template-columns:77px minmax(0,1fr);gap:6px;align-items:center}
+.dye-field span{text-align:right}
+.dye-field input{width:100%}
+.dye-result{flex:1;display:flex;flex-direction:column;min-height:0;border:1px solid var(--line)}
+.dye-result .table-wrap{min-height:100px}
+.machine-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 20px}
+.machine-form .flow-info-field{grid-template-columns:95px minmax(0,1fr)}
+#machine-costs .machine-form .flow-info-field{grid-template-columns:120px minmax(0,1fr)}
+#machine-costs .machine-unit-cost-form .machine-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+#machine-costs .machine-unit-cost-form .flow-info-field{grid-template-columns:150px minmax(0,1fr)}
+.machine-section{margin-bottom:20px}
+.machine-section h3{font-size:13px;font-weight:500;color:#365e8d;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.machine-table{overflow:auto;border:1px solid var(--line);max-height:360px}
+.machine-table table{min-width:100%;width:max-content}
+.machine-table td,.machine-table th{min-width:90px}
+.machine-selector{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.machine-selector select{min-width:220px;max-width:100%}
+.machine-long{margin-top:12px;grid-column:1/-1}
+.machine-form textarea{width:100%}
+@media(max-width:1050px){.machine-form{grid-template-columns:repeat(2,minmax(0,1fr))}.dye-search-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.dye-search-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}.dye-field{grid-template-columns:65px minmax(0,1fr);gap:3px}.machine-form{grid-template-columns:minmax(0,1fr)}.machine-selector{flex-wrap:wrap}.machine-selector select{min-width:0;width:100%}}
+@media(max-width:760px){#machine-costs .machine-unit-cost-form .machine-form{grid-template-columns:minmax(0,1fr)}}
+.formula-reviews{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;min-width:0}.formula-reviews details{min-width:0;border:1px solid #dbe7f4;padding:0 10px}.formula-reviews summary{cursor:pointer;padding:8px 0;color:#52759e}.formula-reviews .machine-table{margin:0 0 10px}
+#machine-dye .flow-info-field:has(input[aria-label="包缸"]){grid-column:1}
+.agreement-actions{display:flex;gap:8px;margin:0 0 10px}.agreement-actions:empty{display:none}.agreement-dialog{height:580px;max-height:calc(100dvh - 30px)}.agreement-remark{display:grid;grid-template-columns:96px 1fr;gap:8px;margin-top:12px}.agreement-remark textarea{min-height:70px;resize:vertical;border:1px solid #d6e3f3;background:#f8fbff;color:inherit;padding:6px;font:inherit}.agreement-remark span{text-align:right}

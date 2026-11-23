@@ -1,0 +1,15 @@
+.business-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 8px;border-bottom:1px solid var(--line);background:#fff;flex-shrink:0}.business-actions button{height:27px;padding:0 12px}.business-dialog{width:1000px;height:600px}.business-dialog .dialog-body{background:#f5f7fa}.business-dialog .dialog-foot{gap:10px}#business-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;background:#fff;padding:16px;border:1px solid var(--line)}.business-field{display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;align-items:center}.business-field>span{text-align:right}.business-field input,.business-field select{width:100%}.business-field.full{grid-column:1/-1}.business-field em{color:#e45353;font-style:normal;margin-left:3px}.business-preview{overflow:auto;margin-top:14px;max-height:310px;border:1px solid var(--line);background:#fff}.business-preview table{min-width:100%}.business-preview th{height:34px}.business-preview td{height:30px}#business-error{margin-top:8px}
+@media(max-width:760px){.business-actions{gap:6px;padding:5px}.business-actions button{font-size:11px;padding:0 6px}.business-field{grid-template-columns:85px minmax(0,1fr)}#business-fields{grid-template-columns:1fr;padding:10px}.business-field.full{grid-column:auto}}
+@media print{.business-actions,.business-dialog{display:none!important}}
+.business-rule{margin:0;line-height:1.7}.business-rule.full{grid-column:1/-1}
+/* 业务操作并入汇总条件与列设置之间，不再单独占用一行。 */
+.report-bar{gap:10px}.group-options{flex:0 0 auto;margin-right:0;gap:12px}.report-bar>.business-actions{flex:1 1 0;min-width:0;padding:0;border:0;background:transparent;gap:6px}.report-bar>.business-actions button{padding:0 9px}.report-tools{flex:0 0 auto;margin-left:auto}
+@media(max-width:1250px){.report-bar{flex-wrap:wrap}.report-bar>.business-actions{flex-basis:100%;order:3}.report-tools{width:auto}}
+@media(max-width:760px){.report-bar{gap:5px}.report-bar>.business-actions{gap:5px}.report-bar>.business-actions button{padding:0 6px}.group-options{gap:8px}}
+
+#grid [data-fill-field]{position:relative;padding-right:15px;cursor:cell}
+#grid [data-fill-field]:focus-visible{outline:2px solid #2573b6;outline-offset:-2px}
+#grid tbody tr[data-row-id]>td.cell-fill-selected{box-shadow:inset 0 0 0 2px #2573b6}
+.cell-fill-handle{display:none;position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:crosshair;touch-action:none}
+.row-selected:has(~ tr[data-row-id]) .cell-fill-handle{display:block}
+.cell-fill-handle::after{content:"";position:absolute;right:1px;bottom:1px;width:8px;height:8px;border:1px solid #fff;background:#2573b6}
