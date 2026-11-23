@@ -1,0 +1,742 @@
+﻿body {
+    margin: 5px 5px 5px 5px;
+    background: #f2f2f2;
+    font: 12px system-ui !important;
+}
+
+/**自定框架样式**/
+.layui-input,
+.layui-textarea,
+.layui-select {
+    height: 28px !important;
+}
+/** 禁用控件点击穿透，便于点外部关闭下拉等 */
+input:disabled,
+textarea:disabled,
+select:disabled {
+    pointer-events: none;
+}
+.layui-bg-red{background-color:#ff5722!important;color:#fff!important}
+.layui-bg-orange{background-color:#ffb800!important;color:#fff!important}
+.layui-bg-green{background-color:#16baaa!important;color:#fff!important}
+.layui-bg-cyan{background-color:#2f4056!important;color:#fff!important}
+.layui-bg-blue{background-color:#1e9fff!important;color:#fff!important}
+.layui-bg-purple{background-color:#a233c6!important;color:#fff!important}
+.layui-bg-black{background-color:#2f363c!important;color:#fff!important}
+.layui-bg-gray{background-color:#fafafa!important;color:#5f5f5f!important}
+.layui-bg-darkgray{background-color:#d2d2d2!important;color:#fff!important}
+.layui-bg-royal{background-color:#315fe7!important;color:#fff!important}
+
+xm-select {
+    box-sizing: border-box;
+}
+xm-select * {
+    font-size: inherit !important;
+}
+
+/* 修改内容：xm-select 下拉面板默认最小宽度 80px（单元格很窄时下拉也不至于太挤） */
+xm-select > .xm-body .xm-option-content {
+    min-width: 80px !important;
+}
+
+xm-select:has(.xm-select-disabled) {
+    cursor: auto !important;
+}
+.table-upload-container {
+    width: auto !important;
+    min-width: auto !important;
+}
+
+.requiredcolumn {
+    color: red;
+    position: sticky;
+    margin-left: 4px;
+    top: 6px;
+}
+
+a { color: #2289ed; }
+a:hover { text-decoration: underline; }
+.layui-form-switch {
+    margin-top: 0;
+}
+
+.layui-layer-btn {
+    border-top: 1px solid #eee;
+    margin-right: 4px;
+}
+.quickSearch-fields .layui-form-label {
+    width: auto !important;
+}
+
+/* 通用搜索：历史方案选择框与字段同宽，公共/私有放不下时换行 */
+.popupsearch-scheme-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    position: relative;
+    gap: 8px 0;
+}
+.popupsearch-scheme-main {
+    display: flex;
+    align-items: center;
+    flex: 1 1 200px;
+}
+.popupsearch-scheme-input-wrap {
+    flex: 1;
+    position: relative;
+}
+.popupsearch-scheme-radios {
+    display: flex;
+    align-items: center;
+    margin-left: 35px;
+}
+
+.quickSearch-actions .layui-btn {
+    height: 26px;
+    padding: 0 5px;
+    margin-left: 0 !important;
+    margin-top: 1px;
+}
+
+/* commonForm：有 width 时 flex 换行 */
+.form-fields-flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom:0 !important;
+}
+.form-fields-flex > .form-field-col {
+    min-width: 0;
+}
+/* 修改内容：排除按钮区，避免被当成控件拉宽 */
+.form-fields-flex > .form-field-col > :not(.layui-form-label){
+    flex: 1;
+    min-width: 0;
+}
+
+.layui-layer-page .layui-layer-btn, .layui-layer-iframe .layui-layer-btn {
+    padding-top: 8px !important;
+}
+
+.layui-tab .layui-tab-title li {
+    font-size: 12px;
+}
+
+.layui-form-radio {
+    margin: initial;
+}
+
+    .layui-form-radio > i {
+        font-size: 20px;
+    }
+
+    .layui-form-radio > * {
+        font-size: 12px;
+    }
+
+.layui-form-radio {
+    min-width: fit-content;
+}
+
+.layui-card-body {
+    font-family: system-ui !important;
+}
+
+.layui-input-wrap .layui-input-number {
+    width: 20px;
+    height: 24px;
+}
+
+.layui-form-label {
+    line-height: 10px;
+}
+
+.layui-input-block {
+    min-height: 28px;
+}
+
+    .layui-input-block tab {
+        line-height: 28px;
+    }
+
+.layui-btn {
+    font-size: 12px !important;
+}
+
+.layui-btn[lay-filter='data-search-btn'] {
+    height: 28px !important;
+    line-height: 28px;
+}
+.layui-btn[lay-filter='temp-search-btn'] {
+    height: 28px !important;
+    line-height: 28px;
+}
+
+.layui-form-item .layui-form-checkbox[lay-skin='primary'] {
+    margin-top: 5px !important;
+}
+/* 表格内 checkbox 不吃上面的外边距 */
+.layui-form-item .layui-table-view .layui-form-checkbox[lay-skin='primary'],
+.layui-form-item .layui-table .layui-form-checkbox[lay-skin='primary'] {
+    margin-top: 0 !important;
+}
+
+.layui-form-checkbox > div {
+    font-size: 12px !important;
+}
+
+.layui-table-tool-panel {
+    min-width: 130px !important;
+}
+
+    .layui-table-tool-panel li {
+        line-height: 25px !important;
+    }
+
+.layui-table-column {
+    min-height: 30px !important;
+    padding: 2px 16px !important;
+}
+
+.layui-table-tool {
+    min-height: 32px !important;
+    padding: 3px 3px !important;
+    line-height: 0px !important;
+}
+
+.layui-table-cell {
+    height: 28px !important;
+    line-height: 18px !important;
+    padding: 5px 10px !important;
+    position: relative;
+}
+.layui-table-view:after {
+    z-index: 0;
+}
+
+.layui-table-cell .cell-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.layui-table-view td {
+    position: relative;
+}
+.layui-table-cell .cell-keep,
+.layui-table td > .cell-keep {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.layui-table th,
+.layui-table td {
+    font-size: 12px !important;
+}
+
+.layui-btn-xs {
+    height: 20px !important;
+    line-height: 19px !important;
+    padding: 0 5px !important;
+    font-size: 12px !important;
+}
+
+/**框架样式结束**/
+.form-group-bottom {
+    /* position: fixed;
+    left: 0;
+    right: 0;
+    padding: 5px 5px;
+    background-color: #fff;
+    box-shadow: 0 -1px 2px 0 rgba(0, 0, 0, .05);
+    z-index: 1; */
+}
+
+#toolbarMain {
+    margin: 5px !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.layui-btn-group {
+    display: flex;
+    gap: 3px;
+}
+
+.layui-form-tool {
+    background: linear-gradient(to bottom, #f0f0f0 0%, #fff 100%);
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    /* box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8); */
+    padding: 0 8px !important;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    margin-right: -1px;
+}
+
+    /* 只有不是禁用按钮时移入时文字变绿色，背景不变 */
+    .layui-form-tool:hover:not(.layui-btn-disabled) {
+        cursor: pointer;
+        color: #2D8CF0;
+    }
+
+    /* 鼠标按下时文字变白色，背景仍不变 */
+    .layui-form-tool:active:not(.layui-btn-disabled) {
+        color: #fff;
+    }
+
+.text-right {
+    text-align: right;
+}
+
+.form-bottom-button {
+    padding-bottom: 30px;
+}
+
+/*.layui-table-page {
+	background-color:#F0F0F0;
+	z-index:99999;
+	position:fixed;
+	bottom:0;
+}
+.layui-table-box {
+	margin-bottom:30px;
+}*/
+.layui-form-item {
+    margin-bottom: 5px;
+}
+
+/* 多表格并排：JS 打 ice-multi-table-row */
+.layui-form-item.ice-multi-table-row {
+    display: flex;
+    gap: 5px;
+}
+/* layui clearfix 的 :after 在 flex 里会多出一截占位 */
+.layui-form-item.ice-multi-table-row:after,
+.layui-form-item.ice-multi-table-row:before {
+    content: none !important;
+    display: none !important;
+}
+.layui-form-item.ice-multi-table-row > [class*="layui-col-"] {
+    float: none;
+    min-width: 0;
+    flex-grow: 1;
+}
+
+.error-page {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.error-page-img {
+    max-width: 100%;
+    max-height: 300px;
+}
+
+.error-page-info {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    padding-left: 30px;
+}
+
+    .error-page-info h1 {
+        color: #434e59;
+        font-size: 72px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+.error-page-info-desc {
+    color: #777;
+    font-size: 20px;
+    line-height: 28px;
+    margin-bottom: 16px;
+}
+
+.layui-btn-sm {
+    height: 25px;
+    line-height: 23px;
+    padding: 0 5px;
+    font-size: 12px;
+}
+
+.layui-btn-container .layui-btn {
+    margin-right: 5px;
+    margin-bottom: 0px;
+}
+
+.layui-table-tool > .layui-table-tool-temp {
+    padding-right: 0;
+    display: inline-block;
+}
+
+.layui-table-tool .layui-table-tool-self > div:not(.layui-inline) .layui-table-tool-temp {
+    padding-right: 0px;
+}
+
+@media screen and (max-width:450px) {
+    .layui-form-item .layui-inline {
+        margin-bottom: 5px;
+        margin-right: 10px;
+        clear: none;
+    }
+}
+
+@media screen and (max-width:550px) {
+    .layui-laypage-default > .layui-laypage-skip {
+        display: none;
+    }
+}
+
+@media screen and (max-width:380px) {
+    .layui-laypage-default > .layui-laypage-limits {
+        display: none;
+    }
+}
+
+.layui-card .table-search-fieldset {
+    margin: 0;
+    border: 1px solid #e6e6e6;
+    padding: 10px 20px 5px 20px;
+    color: #6b6b6b;
+}
+
+.scroll-wrapper {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: scroll;
+}
+
+.layui-upload-img {
+    width: 100px;
+    height: 100px;
+    margin: 0 10px 10px 0;
+}
+
+/*轮播*/
+.layui-carousel > [carousel-item] {
+    overflow: visible;
+    height: 0;
+}
+
+    .layui-carousel > [carousel-item] > * {
+        height: auto;
+    }
+
+.layui-carousel-ind {
+    margin-top: -20px;
+    top: auto;
+    bottom: 10px;
+}
+.layui-table-grid-down {
+    display: none !important;
+}
+
+/*表格单元格自动换行*/
+/*.layui-table-cell {
+	height:auto !important;
+	white-space:normal;
+	word-break:break-all;
+}*/
+/**必填红点*/
+.layui-tab-item > .layui-form-item .required:after {
+    content: '*';
+    color: red;
+    position: absolute;
+    margin-left: 4px;
+    font-weight: bold;
+    line-height: 1.8em;
+    top: 6px;
+    right: 5px;
+}
+
+/**必填红点*/
+.layui-tab-item > .layui-form-item > .layui-inline .required:after {
+    content: '*';
+    color: red;
+    position: absolute;
+    margin-left: 4px;
+    font-weight: bold;
+    line-height: 1.8em;
+    top: 6px;
+    right: 5px;
+}
+
+/**必填红点*/
+.layui-form-item .required:after {
+    content: '*';
+    color: red;
+    position: absolute;
+    margin-left: 4px;
+    font-weight: bold;
+    line-height: 1.8em;
+    top: 6px;
+    right: 5px;
+}
+
+.layui-form-selectup dl {
+    top: 42px;
+    bottom: unset;
+}
+
+.layui-table-tool .layui-btn-container {
+    margin-bottom: 0px;
+}
+
+.layui-form-item .layui-inline {
+    margin-bottom: 5px;
+    margin-right: 5px;
+}
+
+.layuimini-container .table-search-fieldset {
+    margin: 0;
+    border: none;
+    padding: 5px;
+    color: #6b6b6b;
+}
+@media screen and (max-width:450px) {
+    .layui-form-item .layui-form-label {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: unset;
+    }
+}
+
+.layui-table-tool-self {
+    position: absolute;
+    right: 3px;
+    top: 3px;
+}
+
+/* 表格右侧工具栏固定 class="layui-icon …"，fa-* 需改回 FontAwesome 字体才能显示 */
+.layui-table-tool-self .layui-icon[class*="fa-"] {
+    font-family: FontAwesome !important;
+}
+
+.layui-table-tool .layui-inline[lay-event] {
+    position: relative;
+    color: #333;
+    width: 25px;
+    height: 25px;
+    text-align: center;
+    margin-left: 5px;
+    padding: unset;
+    line-height: 25px;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    vertical-align: middle;
+    -webkit-transition: none;
+    transition: none;
+    cursor: pointer;
+}
+
+.layui-table-tool .layui-table-tool-self .layui-inline[lay-event] {
+    margin: 0 0 0 5px;
+}
+
+.layui-table-tool .layui-table-tool-self .layui-inline[lay-event]:has(+ .layui-table-tool-split) {
+    margin-right: 0;
+    border-right: none;
+}
+.layui-table-tool .layui-table-tool-self .layui-table-tool-split {
+    height: 25px;
+    line-height: 24px;
+    width: 16px;
+    margin-left: 0;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    margin: 0;
+}
+.layui-table-tool .layui-table-tool-self .layui-inline[lay-event]:hover + .layui-table-tool-split,
+.layui-table-tool .layui-table-tool-self .layui-table-tool-split:hover {
+    border-color: #999;
+}
+.layui-table-tool .layui-table-tool-self .layui-table-tool-split .layui-icon {
+    font-size: 12px;
+}
+
+.layuimini-form > .layui-form-item .layui-form-label {
+    width: 80px !important;
+}
+
+.layuimini-form > .layui-form-item .layui-input-block {
+    margin-left: 110px !important;
+}
+
+.layuimini-form > .layui-form-item > .layui-form-label {
+    width: 90px !important;
+}
+
+.layuimini-form > .layui-form-item > .layui-input-block {
+    margin-left: 120px !important;
+}
+
+/*chrome滚动条*/
+::-webkit-scrollbar-track-piece {
+    -webkit-border-radius: 0;
+}
+
+.layui-laypage .layui-laypage-skip {
+    height: 30px;
+    line-height: 30px;
+    color: black;
+}
+
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    position: absolute;
+    left: -1px;
+    top: -1px;
+    padding: 1px;
+    width: 100%;
+    height: 100%;
+    background-color: #2D8CF0;
+}
+
+.layui-table th,
+.layui-table td,
+.layui-table[lay-skin="line"],
+.layui-table[lay-skin="row"],
+.layui-table-view,
+.layui-table-tool,
+.layui-table-header,
+.layui-table-col-set,
+.layui-table-total,
+.layui-table-page,
+.layui-table-fixed-r,
+.layui-table-tips-main,
+.layui-table-grid-down {
+    border-color: #e6e6e6;
+}
+
+    .layui-table thead tr,
+    .layui-table-header,
+    .layui-table-tool,
+    .layui-table-total,
+    .layui-table-total tr,
+    .layui-table-patch,
+    .layui-table-mend,
+    .layui-table tbody tr:hover,
+    .layui-table-hover,
+    .layui-table-click {
+        background-color: #f2f2f2;
+    }
+
+.layui-form-pane .layui-form-label {
+    background-color: #f2f2f2;
+    height: 28px;
+    padding: 0;
+    line-height: 28px;
+}
+
+.layui-disabled,
+.layui-disabled:hover {
+    color: rgba(0, 0, 0, .85) !important;
+    cursor: not-allowed !important;
+}
+
+.layui-checkbox-disabled span {
+    background-color: #d2d2d2 !important;
+}
+
+.layui-btn + .layui-btn {
+    margin-left: 5px;
+}
+
+.lay-img {
+    display: flex;
+    align-items: center;
+    min-height: 25px
+}
+
+.lay-img div {
+    position: relative;
+    display: inline-block
+}
+
+.lay-img img {
+    cursor: pointer;
+    display: none;
+}
+
+.lay-img .upload-icon {
+    font-size: 25px;
+    color: #16baaa;
+    cursor: pointer
+}
+
+.lay-img .delete-icon {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 12px;
+    color: #FF5722;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer
+}
+
+/** showPrintMenu 下拉 */
+@keyframes printMenuDropDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes printMenuDropUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.print-dropdown-menu {
+    position: absolute;
+    z-index: 66666;
+    background: #fff;
+    border: 1px solid #d2d2d2;
+    transform-origin: top center;
+    animation: printMenuDropDown .18s ease-out;
+}
+.print-dropdown-menu.is-up {
+    transform-origin: bottom center;
+    animation: printMenuDropUp .18s ease-out;
+}
+.print-dropdown-menu-ul-wrap { max-height: 200px; overflow-y: auto; }
+.print-dropdown-menu-ul { padding: 2px 0; }
+.print-dropdown-menu-li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    height: 36px;
+    cursor: pointer;
+}
+.print-dropdown-menu-li.selected,
+.print-dropdown-menu-li:hover:not(.disabled) { background: #f2f2f2; }
+.print-dropdown-menu-li.disabled { opacity: .5; cursor: default; }
+.print-dropdown-menu-li .icon { margin-right: 5px; color: #909399; min-width: 18px; }
+.print-dropdown-menu-li .type-label { font-size: 12px; color: #999; margin-left: 10px; flex-shrink: 0; }
+.print-dropdown-menu-content {
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+.print-dropdown-menu-content .layui-form-tool {
+    display: block;
+    width: 100%;
+    margin: 0 !important;
+    text-align: center;
+    box-sizing: border-box;
+}
+
