@@ -1,0 +1,260 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    var plandone = 0;
+    var isdone = 0;
+    var deleteUrl = [];
+    layui.use(['jquery', 'upload', 'form', 'laydate', 'common', 'optimizeSelectOption'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            upload = layui.upload,
+            common = layui.common,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        //权限字段
+        common.authorizeFields('adminform');
+        //上传文件
+        var startuploadInst = upload.render({
+            elem: '#uploadstart'
+            , url: '/FileManage/Uploadfile/Upload' //改成您自己的上传接口
+            , accept: 'file'
+            , data: { filetype: 4 }
+            , auto: false//不自动提交
+            , bindAction: '#startpackage'
+            , choose: function (obj) {
+                if ($('#F_StartPackage').val() != "") {
+                    deleteUrl.push($('#F_StartPackage').val());
+                }
+                //预读本地文件示例，不支持ie8
+                obj.preview(function (index, file, result) {
+                    $("#F_StartPackage").val(file.name);
+                });
+                plandone += 1;
+            }
+            , done: function (res) {
+                //如果上传失败
+                if (res.code > 0) {
+                    //失败状态，并实现重传
+                    var demoText = $('#demoText');
+                    demoText.html('<span style="color: #FF5722;">上传失败</span> <a class="layui-btn layui-btn-xs demo-reload">重试</a>');
+                    demoText.find('.demo-reload').on('click', function () {
+                        startuploadInst.upload();
+                    });
+                    common.modalMsg(res.msg, "warning");
+                    return false;
+                }
+                $('#F_StartPackage').val(res.data[0].src);
+                isdone = isdone + 1;
+                if (plandone - isdone == 0) {
+                    $('#formsave').click();
+                }
+            }
+            , error: function () {
+                //演示失败状态，并实现重传
+                var demoText = $('#demoText');
+                demoText.html('<span style="color: #FF5722;">上传失败</span> <a class="layui-btn layui-btn-xs demo-reload">重试</a>');
+                demoText.find('.demo-reload').on('click', function () {
+                    startuploadInst.upload();
+                });
+            }
+        });
+        var updateuploadInst = upload.render({
+            elem: '#uploadupdate'
+            , url: '/FileManage/Uploadfile/Upload' //改成您自己的上传接口
+            , accept: 'file'
+            , data: { filetype: 4 }
+            , auto: false//不自动提交
+            , bindAction: '#updatepackage'
+            , choose: function (obj) {
+                if ($('#F_UpdatePackage').val() != "") {
+                    deleteUrl.push($('#F_UpdatePackage').val());
+                }
+                //预读本地文件示例，不支持ie8
+                obj.preview(function (index, file, result) {
+                    $("#F_UpdatePackage").val(file.name);
+                });
+                plandone += 1;
+            }
+            , done: function (res) {
+                //如果上传失败
+                if (res.code > 0) {
+                    //失败状态，并实现重传
+                    var demoText = $('#demoText');
+                    demoText.html('<span style="color: #FF5722;">上传失败</span> <a class="layui-btn layui-btn-xs demo-reload">重试</a>');
+                    demoText.find('.demo-reload').on('click', function () {
+                        updateuploadInst.upload();
+                    });
+                    common.modalMsg(res.msg, "warning");
+                    return false;
+                }
+                $('#F_UpdatePackage').val(res.data[0].src);
+                isdone = isdone + 1;
+                if (plandone - isdone == 0) {
+                    $('#formsave').click();
+                }
+            }
+            , error: function () {
+                //演示失败状态，并实现重传
+                var demoText = $('#demoText');
+                demoText.html('<span style="color: #FF5722;">上传失败</span> <a class="layui-btn layui-btn-xs demo-reload">重试</a>');
+                demoText.find('.demo-reload').on('click', function () {
+                    updateuploadInst.upload();
+                });
+            }
+        });
+        $(function () {
+            initControl();
+            if (!!keyValue) {
+                common.ajax({
+                    url: '/SystemManage/ThirdApp/GetFormJson',
+                    dataType: 'json',
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                    }
+                });
+            }
+            form.render();
+        });
+        wcLoading.close();
+
+        function initControl() {
+
+        }
+
+        window.FormSave = function () {
+            if (form.validate('[lay-filter="adminform"]')) {
+                if (plandone > 0) {
+                    $("#startpackage").click();
+                    $("#updatepackage").click();
+                }
+                else
+                    $("#formsave").click();
+            }
+        }
+
+        window.CreateAppId = function () {
+            if (!!keyValue) {
+                common.modalConfirm("注：您确定要修改应用密钥？", function (r) {
+                    if (r) {
+                        $("#F_AppId").val("xq" + generateRandomPassword(8));
+                        $("#F_AppSecret").val(generateRandomPassword(32));
+                    }
+                });
+            }
+            else {
+                $("#F_AppId").val("xq" + generateRandomPassword(8));
+                $("#F_AppSecret").val(generateRandomPassword(32));
+            }
+        }
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            if (!postData["F_EnabledMark"]) postData["F_EnabledMark"] = false;
+            common.submitForm({
+                url: '/SystemManage/ThirdApp/SubmitForm?keyValue=' + keyValue,
+                param: { entity: postData, deleteUrl: deleteUrl },
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+    function generateRandomPassword(length) {
+        var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        var password = '';
+        for (var i = 0; i < length; i++) {
+            var randomIndex = Math.floor(Math.random() * chars.length);
+            password += chars.substring(randomIndex, randomIndex + 1);
+        }
+        return password;
+    }
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">应用名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_AppName" name="F_AppName" autocomplete="off" lay-verify="required"
+                            placeholder="请输入" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">应用标识</label>
+                    <div class="layui-input-block" style="padding-right: 70px;">
+                        <input type="text" id="F_AppId" name="F_AppId" lay-verify="required" readonly disabled
+                            class="layui-input">
+                        <button class="layui-btn layui-btn-xs"
+                            style="position: absolute;top: 0;right: 6px;cursor: pointer;"
+                            onclick="CreateAppId()">点击生成</button>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">应用密钥</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_AppSecret" name="F_AppSecret" lay-verify="required" readonly disabled
+                            class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">最新版本</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_AppVersion" name="F_AppVersion" lay-verify="required"
+                            class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">检测时间</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_CheckTime" name="F_CheckTime" lay-verify="required" value="00:00:00" autocomplete="off" placeholder="请输入" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">安装包</label>
+                    <div class="layui-input-block" style="display: flex;">
+                        <input type="text" id="F_StartPackage" name="F_StartPackage" readonly disabled
+                            class="layui-input">
+                        <button class="layui-btn layui-btn-sm" style="margin-left:10px;" id="uploadstart">上传</button>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">更新包</label>
+                    <div class="layui-input-block" style="display: flex;">
+                        <input type="text" id="F_UpdatePackage" name="F_UpdatePackage" readonly disabled
+                            class="layui-input">
+                        <button class="layui-btn layui-btn-sm" style="margin-left:10px;" id="uploadupdate">上传</button>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">更新说明</label>
+                    <div class="layui-input-block">
+                        <textarea type="text" id="F_UpdateNotes" name="F_UpdateNotes" value="" autocomplete="off"
+                            class="layui-textarea"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">描述</label>
+                    <div class="layui-input-block">
+                        <textarea id="F_Description" name="F_Description" value="" autocomplete="off"
+                            class="layui-textarea"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" onclick="FormSave()" id="submit">确认保存</button>
+                    <button class="layui-btn site-demo-active" lay-submit id="formsave" lay-filter="saveBtn"></button>
+                    <button style="display:none" id="startpackage" name="startpackage"></button>
+                    <button style="display:none" id="updatepackage" name="updatepackage"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+

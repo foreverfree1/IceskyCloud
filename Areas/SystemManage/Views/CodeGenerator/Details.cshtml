@@ -1,0 +1,96 @@
+﻿@{
+ViewBag.Title = "Index";
+Layout = "~/Views/Shared/_Index.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'table','common', 'commonTable', 'optimizeSelectOption'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            table = layui.table,
+            common = layui.common,
+            commonTable = layui.commonTable;
+        var keyValue = $.request("keyValue");
+        var dbNumber = $.request("dbNumber");
+        wcLoading.close();
+        toolbarDemo.innerHTML = common.authorizeTabButton(toolbarDemo.innerHTML);
+        commonTable.rendertable({
+            elem: '#currentTableId',
+            url: '/SystemManage/CodeGenerator/GetTablePageListJson?tablename=' + keyValue + "&uselike=0&setmodel=1",
+            search: true,
+            defaultToolbar: ['filter', 'exports', { title: '打印', layEvent: 'myPrint', icon: 'layui-icon-print' }],
+            cols: [[
+                { field: 'F_ColumnName', title: '列名', filter: true, sort: true },
+                { field: 'F_DataType', title: '数据类型', sort: true },
+                { field: 'F_IsPrimaryKey', title: '主键', sort: true },
+                { field: 'F_IsForeignKey', title: '外键', sort: true },
+                // { field: 'IsIdentity', title: '自增', width: 100, sort: true },
+                { field: 'F_IsNullable', title: '可空', sort: true },
+                { field: 'F_MaxLength', title: '长度' },
+                { field: 'F_ColumnDescription', title: '说明', filter: true },
+                { field: 'F_ReferencedTable', title: '外键表' },
+                { field: 'F_IndexName', title: '索引名' },
+                { field: 'F_IndexType', title: '索引类型' }
+            ]],
+        });
+        // 监听搜索操作
+        form.on('submit(data-search-btn)', function (data) {
+            //执行搜索重载
+            commonTable.reloadtable({
+                elem: 'currentTableId',
+                page: false,
+                curr: 1,
+                where: { keyword: data.field.txt_keyword }
+            });
+            return false;
+        });
+        /**
+         * toolbar监听事件
+         */
+        table.on('toolbar(currentTableFilter)', function (obj) {
+            var data = table.checkStatus('currentTableId').data;
+            if (obj.event === 'TABLE_SEARCH') {
+                var _that = $("#searchField");
+                if (_that.hasClass("layui-hide")) {
+                    _that.removeClass('layui-hide');
+                } else {
+                    _that.addClass('layui-hide');
+                }
+                table.resize();
+            }
+            else if (obj.event === 'close') {
+                parent.layer.closeAll();
+            }
+            return false;
+        });
+    });
+</script>
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <fieldset class="table-search-fieldset layui-hide" id="searchField">
+            @*<legend>搜索信息</legend>*@
+            <div>
+                <form class="layui-form layui-form-pane" action="">
+                    <div class="layui-form-item">
+                        <div class="layui-inline">
+                            <label class="layui-form-label">字段名称:</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off"
+                                    class="layui-input" placeholder="">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <button type="submit" class="layui-btn layui-btn-primary" lay-submit
+                                lay-filter="data-search-btn"><i class="layui-icon">&#xe615;</i> 搜 索</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </fieldset>
+        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+        <script type="text/html" id="toolbarDemo">
+            <div class="layui-btn-container" id="toolbar">
+                <button id="NF-close" name="NF-close" class="layui-btn layui-btn-sm layui-btn-danger" lay-event="close"><i class="layui-icon">&#xe60b;</i>关闭</button>
+            </div>
+        </script>
+    </div>
+</div>

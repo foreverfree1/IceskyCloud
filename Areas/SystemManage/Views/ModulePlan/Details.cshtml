@@ -1,0 +1,277 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    var listData = [];
+    layui.use(['jquery', 'form', 'laydate', 'tableEdit', 'common', 'optimizeSelectOption', 'commonTable', 'table', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            tableEdit = layui.tableEdit,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        $("#F_ModuleId").val($.request("F_ModuleId"));
+        //权限字段
+        common.authorizeFields('adminform');
+        //此处需修改
+        //类型为时间时
+        //laydate.render({
+        //elem: '#F_Birthday'
+        //, btns: ['clear', 'now']
+        //, trigger: 'click',
+        //format: 'yyyy-MM-dd',
+        //});
+        $(function () {
+            //此处需修改
+            //绑定数据源
+            //类型为下拉框时
+            // $("#F_DataType").bindSelect({
+            //     data: top.clients.dataItems["ModuleDataType"],
+            //     id: ""
+            // });
+
+            // $("#F_ProcName").bindSelect({
+            //     url: "/SystemManage/CodeGenerator/GetProcTableJson",
+            //     id: "Name",
+            //     text: "Name",
+            //     search: true,
+            // });
+            if (!!keyValue) {
+                common.ajax({
+                    url: '/SystemManage/ModulePlan/GetFormJson',
+                    dataType: 'json',
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        listData = JSON.parse(data.F_PlanParam).map(function (item) {
+                            return {
+                                F_Fields: item.fieldname,
+                                F_IsVerify: item.isverify == 1 ? '是' : '否'
+                            }
+                        });
+                    }
+                });
+            }
+            initControl();
+            common.setReadOnly('adminform');
+            form.render();
+        });
+        wcLoading.close();
+
+        function initControl() {
+            var fieldsData = [];
+            common.ajax({
+                url: '/SystemManage/ModuleFields/GetFilterJson',
+                dataType: 'json',
+                data: { F_ModuleId: $.request("F_ModuleId") },
+                async: false,
+                success: function (data) {
+                    fieldsData = data.map(function (item) {
+                        return {
+                            value: item.F_EnCode,
+                            name: item.F_FullName + '(' + item.F_EnCode + ')'
+                        }
+                    });
+                }
+            });
+            var params = [{ name: '否', value: 0 }, { name: '是', value: 1 }];
+            var cols = [[
+                { type: "checkbox", width: 50, fixed: 'left' },
+                {
+                    field: 'F_Fields', title: '字段名称<span class="requiredcolumn">*</span>', width: '80%', event: 'F_Fields', config: { type: 'input', data: fieldsData, verify: { type: "required" } }
+                },
+                {
+                    field: 'F_IsVerify', title: '是否必填', event: 'F_IsVerify', width: 100, config: { type: 'input', data: params, verify: { type: "required" } }
+                }
+            ]]
+            commonTable.rendertable({
+                elem: '#currentTableId',
+                data: listData,
+                defaultToolbar: [],
+                search: false,
+                limit: 9999,//每页数据 默认
+                page: false,
+                height: 'full-185',
+                filter: {
+                    clearFilter: false,
+                },
+                cols: cols
+            });
+            var aopTable = tableEdit.aopObj(cols); //获取一个aop对象
+            aopTable.on('tool(currentTableFilter)', function (obj) {
+                var field = obj.field; //单元格字段
+                var value = obj.value; //修改后的值
+                var data = obj.data; //当前行旧数据
+                var event = obj.event; //当前单元格事件属性值
+                var update = {};
+                update[field] = value;
+                //把value更新到行中
+                obj.update(update);
+            });
+            //行点击事件监听，控制按钮显示
+            var oneList = [];//选择1条显示
+            var moreList = ["NF-delete"];//多条显示
+            commonTable.tableRowClick("checkbox", "currentTableFilter", "currentTableId", oneList, moreList);
+
+        }
+
+        //toolbar监听事件
+        table.on('toolbar(currentTableFilter)', function (obj) {
+            var data = table.checkStatus('currentTableId').data;
+            if (obj.event === 'add') {  // 监听添加操作\
+                var alldata = table.cache.currentTableId;
+                alldata.push({ F_Id: uuid(), F_Fields: '', F_IsVerify: { name: '否', value: 0 } })
+                table.reload('currentTableId', { data: alldata })
+            }
+            else if (obj.event === 'delete') {
+                if (data.length == 0) {
+                    common.modalMsg("未选中数据", "warning");
+                    return false;
+                }
+                common.modalConfirm("注：您确定要删除选择的数据吗？", function (r) {
+                    if (r) {
+                        var alldata = table.cache.currentTableId;
+                        for (var j = 0; j < data.length; j++) {
+                            for (var i = alldata.length - 1; i >= 0; i--) {
+                                if (alldata[i].F_Id == data[j].F_Id) {
+                                    alldata.splice(i, 1);
+                                    break;
+                                }
+                            }
+                        }
+                        table.reload('currentTableId', { data: alldata })
+                    }
+                });
+            }
+            return false;
+        });
+
+        const hasDuplicate = (arr, key) => {
+            const seen = new Set();
+            for (const item of arr) {
+                if (seen.has(item[key])) {
+                    return true; // 找到重复项
+                }
+                seen.add(item[key]);
+            }
+            return false; // 没有找到重复项
+        };
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            var params = [];
+            var ispass = true;
+            table.cache.currentTableId.forEach(item => {
+                if (!item.F_Fields) {
+                    ispass = false;
+                    return;
+                }
+                params.push({ fieldname: item.F_Fields.name, fieldvalue: item.F_Fields.value, isverify: item.F_IsVerify.value });
+            });
+            if (!ispass) {
+                common.modalMsg("字段不能为空!");
+                return false;
+            }
+            if (hasDuplicate(params, "fieldvalue")) {
+                common.modalMsg("字段重复，请重新选择!");
+                return false;
+            }
+            postData.F_PlanParam = JSON.stringify(params);
+            common.submitForm({
+                url: '/SystemManage/ModulePlan/SubmitForm?keyValue=' + keyValue,
+                param: postData,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+
+    function selectFileds() {
+        if (!$("#F_ObjectName").val()) {
+            layer.msg("请先选择对象");
+            return false;
+        }
+    }
+</script>
+<style type="text/css">
+    
+</style>
+<script type="text/html" id="currentTableBar">
+   <a id="NF-edit" authorize class="layui-btn layui-btn-xs  layui-btn-warm" lay-event="edit">新增</a>
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">方案名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_PlanName" name="F_PlanName" autocomplete="off"
+                                lay-verify="required" maxlength="5" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">方案编码</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" autocomplete="off" lay-verify="required"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">按钮名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_ButtonName" name="F_ButtonName" autocomplete="off"
+                                lay-verify="required" maxlength="2" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">方案提示</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_PlanTitps" name="F_PlanTitps" autocomplete="off" placeholder="请输入"
+                                class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Remark" name="F_Remark" autocomplete="off" placeholder="请输入"
+                                class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">存储过程</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Stored" name="F_Stored" style="min-height:100px;" class="layui-textarea"
+                                placeholder=""></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12">
+                        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                    <input type="hidden" id="F_ModuleId" name="F_ModuleId" />
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

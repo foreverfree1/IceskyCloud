@@ -1,0 +1,681 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    var listData = [];
+    layui.use(['jquery', 'form', 'laydate', 'eipTableEdit', 'tableEdit', 'common', 'optimizeSelectOption', 'commonTable', 'table', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            eipTableEdit = layui.eipTableEdit,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+
+        //==============================================================
+        // 默认值下拉：公共五项（值用模板变量）+ 每一行自己手输的那一条自定义项
+        // 手输内容落地时只写进“这一行”的选项，不会串到别的行
+        //==============================================================
+        var DEFAULT_VALUE_FIELD = 'F_DefaultValue';
+        var defaultValueList = [
+            { name: '登录用户', value: '{loginUser}' },
+            { name: '登录部门', value: '{loginOrg}' },
+            { name: '登录角色', value: '{loginRole}' },
+            { name: '当前时间', value: '{currentDatetime}' },
+            { name: '当前日期', value: '{currentDate}' }
+        ];   // 公共五项，只读：各行自定义项不往这里加，否则所有行会共用
+        var defaultRowOptions = {};   // 行号 -> 这一行手输的自定义项 { name, value, custom: true }
+        var defaultRowConfig = {};    // 行号 -> { data: [...] }，走 eipTableEdit 的 rowConfig 做行级下拉数据
+        var defaultTypedText = '';    // 下拉里刚敲进去、还没落地的搜索内容
+        var defaultTypedIndex = null; // 敲字时所在的行
+        var fieldSelectData = [];     // 字段列的下拉数据源（value=F_EnCode，name=显示文本），initControl 里填充，提交时反查 text 用
+
+        // 值 → 显示名
+        function defaultOptionName(value) {
+            if (value == null) return '';
+            var text = String(value);
+            for (var i = 0; i < defaultValueList.length; i++) {
+                if (String(defaultValueList[i].value) === text) return defaultValueList[i].name;
+            }
+            return text;
+        }
+
+        // 这一格当前的显示文本（回填到搜索框用）
+        function currentDefaultText($td) {
+            var index = $td.closest('tr').attr('data-index');
+            var row = (table.cache.currentTableId || [])[index];
+            if (!row) return '';
+            var val = row[DEFAULT_VALUE_FIELD];
+            if (val && typeof val === 'object') return String(val.name || val.value || '');
+            return defaultOptionName(val);
+        }
+
+        // 某一行的下拉数据：公共五项 + 这一行自己的自定义项
+        function defaultDataFor(index) {
+            var list = defaultValueList.slice();
+            var extra = defaultRowOptions[index];
+            if (extra && extra.value) list.push(extra);
+            return list;
+        }
+
+        // 行数据变了就同步行级配置，下次打开这一格看到的就是这一行自己的选项；返回最新数据
+        function syncDefaultRow(index) {
+            if (index == null || index === '') return defaultValueList;
+            defaultRowConfig[index] = { data: defaultDataFor(index) };
+            return defaultRowConfig[index].data;
+        }
+
+        // 这一行手输的内容补成它自己的选项：先删旧的，只留一条
+        function setRowDefaultOption(index, value, name) {
+            if (index == null || index === '') return;
+            var text = $.trim(value == null ? '' : String(value));
+            if (!text) delete defaultRowOptions[index];
+            else defaultRowOptions[index] = { name: $.trim(name || '') || text, value: text, custom: true };
+            syncDefaultRow(index);
+        }
+
+        // 值不在公共五项里就补成这一行的自定义项，页面加载已有数据时用，否则格子上显示不出来
+        function ensureDefaultOption(index, value, name) {
+            var text = $.trim(value == null ? '' : String(value));
+            if (!text) return;
+            for (var i = 0; i < defaultValueList.length; i++) {
+                if (String(defaultValueList[i].value) === text) return;
+            }
+            setRowDefaultOption(index, text, $.trim(name || '') || text);
+        }
+
+        // 增删行之后行号会整体重排，按当前行缓存重建一次行级配置
+        // 注意要原地清空：列配置的 rowConfig 拿的是这个对象本身
+        function rebuildDefaultRowConfig() {
+            Object.keys(defaultRowConfig).forEach(function (k) { delete defaultRowConfig[k]; });
+            Object.keys(defaultRowOptions).forEach(function (k) { delete defaultRowOptions[k]; });
+            (table.cache.currentTableId || []).forEach(function (row, index) {
+                var val = row[DEFAULT_VALUE_FIELD];
+                if (val == null || val === '') return;
+                var value = val && typeof val === 'object' ? val.value : val;
+                var name = val && typeof val === 'object' ? val.name : '';
+                if (value) ensureDefaultOption(index, value, name);
+            });
+        }
+
+        function defaultCell(index) {
+            if (index == null || index === '') return $();
+            var $view = $('#currentTableId').next('.layui-table-view');
+            if (!$view.length) $view = $('div[lay-table-id="currentTableId"]');
+            return $view.find('tr[data-index="' + index + '"] td[data-field="' + DEFAULT_VALUE_FIELD + '"]').first();
+        }
+
+        // 把值写回格子：行缓存 + 单元格文字；下拉的选项列表也补上，下次打开就能看到
+        function applyDefaultToCell($td, value) {
+            var index = $td.closest('tr').attr('data-index');
+            var rows = table.cache.currentTableId || [];
+            if (rows[index]) rows[index][DEFAULT_VALUE_FIELD] = value;
+
+            var $cell = $td.children('.layui-table-cell');
+            if ($cell.length && !$cell.children('.cell-text').length) $cell.wrapInner('<span class="cell-text"></span>');
+            $td.find('.cell-text').text(defaultOptionName(value));
+
+            // 实例还在就顺手刷新一下“这一行”的下拉数据；这里不调 setValue，避免又把行缓存覆盖回去
+            var api = $td.data('fieldControl');
+            if (api && api.update) {
+                try { api.update({ data: syncDefaultRow(index) }); } catch (e) { }
+            }
+        }
+
+        // 搜索内容没命中任何选项时：补成选项再写回格子；输入框被清空时把这一格也清空
+        function commitDefaultTypedText() {
+            var index = defaultTypedIndex;
+            var text = $.trim(defaultTypedText);
+            defaultTypedText = '';
+            defaultTypedIndex = null;
+            if (index == null || index === '') return;
+            var $td = defaultCell(index);
+            if (!$td.length) return;
+
+            var row = (table.cache.currentTableId || [])[index] || {};
+            var current = row[DEFAULT_VALUE_FIELD];
+            var currentValue = current && typeof current === 'object' ? current.value : current;
+            var currentName = current && typeof current === 'object' ? current.name : defaultOptionName(currentValue);
+
+            // 输入框里是空的：这一格恢复为空，同时去掉这一行残留的自定义项
+            if (!text) {
+                if (!currentValue && !currentName) return;
+                setRowDefaultOption(index, '', '');
+                applyDefaultToCell($td, '');
+                return;
+            }
+            // 和格子上现有的值/文字一样，说明已经落地过了
+            if (text === currentName || text === currentValue) return;
+
+            // 命中公共五项或这一行原有的自定义项，就直接用它的 value；没命中就换成这一行新的自定义项
+            var hit = null;
+            defaultDataFor(index).forEach(function (o) {
+                if (!hit && (o.name === text || String(o.value) === text)) hit = o;
+            });
+            if (hit) {
+                applyDefaultToCell($td, hit.value);
+                return;
+            }
+            setRowDefaultOption(index, text, text);
+            applyDefaultToCell($td, text);
+        }
+
+        // 不把事件绑到 input 上：xm-select 的搜索框是点开下拉那一下才渲染出来的，还会被它重绘换节点。
+        // 改成在 document 的捕获阶段听：捕获是从外往里传的，document 一定先收到，
+        // 输入框什么时候出现、换几次节点都跑不掉，只要它在“默认值”这一格里就收下
+        document.addEventListener('input', function (e) {
+            var el = e.target;
+            if (!el || el.tagName !== 'INPUT') return;
+            var $td = $(el).closest('td[data-field="' + DEFAULT_VALUE_FIELD + '"]');
+            if (!$td.length) return;
+            captureDefaultInput(el, $td);
+        }, true);
+
+        // Tab 之类不走 mousedown 的失焦
+        document.addEventListener('focusout', function (e) {
+            var el = e.target;
+            if (!el || el.tagName !== 'INPUT' || defaultTypedIndex == null) return;
+            if (!$(el).closest('td[data-field="' + DEFAULT_VALUE_FIELD + '"]').length) return;
+            setTimeout(commitDefaultTypedText, 220);
+        }, true);
+
+        // 默认值这一列的编辑框由 tableEdit 组件生成，placeholder 写死为「请选择」；
+        // 这里在该列的范围内把它换成「自定义」，不影响其它列，也不改框架 js。
+        function patchDefaultTips() {
+            var $view = $('#currentTableId').next('.layui-table-view');
+            if (!$view.length) $view = $('div[lay-table-id="currentTableId"]');
+            if (!$view.length) return;
+            var $tds = $view.find('td[data-field="' + DEFAULT_VALUE_FIELD + '"]');
+            if (!$tds.length) return;
+            $tds.find('input[placeholder^="请选择"]').each(function () {
+                this.placeholder = '自定义';
+            });
+            $tds.find('.xm-tips').each(function () {
+                if ($.trim($(this).text()).indexOf('请选择') > -1) $(this).text('自定义');
+            });
+        }
+
+        var dftTipsTimer = null;
+        function scheduleDefaultTips() {
+            if (dftTipsTimer) return;
+            dftTipsTimer = setTimeout(function () {
+                dftTipsTimer = null;
+                patchDefaultTips();
+                // tableEdit 是先清空再重建输入框，稍后再补一次
+                setTimeout(patchDefaultTips, 60);
+            }, 20);
+        }
+
+        // 下拉是点开时才渲染的，节点会被重建，持续纠正一次
+        if (window.MutationObserver) {
+            new MutationObserver(scheduleDefaultTips).observe(
+                $('.layuimini-main').get(0) || document.body,
+                { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder'] }
+            );
+        }
+
+        // 点击默认值格子的瞬间就开始纠正，赶在下拉渲染完之后
+        document.addEventListener('mousedown', function (e) {
+            if (!$(e.target).closest('td[data-field="' + DEFAULT_VALUE_FIELD + '"]').length) return;
+            scheduleDefaultTips();
+        }, true);
+
+        // 点进搜索框时把这一格已有的值带进去：空框才填，用户自己敲的内容不动；
+        // 填完全选，直接打字就是整条覆盖。只改 DOM 不派发 input，下拉列表照旧全部可见
+        document.addEventListener('focusin', function (e) {
+            var el = e.target;
+            if (!el || el.tagName !== 'INPUT') return;
+            var $td = $(el).closest('td[data-field="' + DEFAULT_VALUE_FIELD + '"]');
+            if (!$td.length) return;
+            // 聚焦到默认值下拉的搜索框时立即纠正提示文字
+            if (el.placeholder === '请选择') el.placeholder = '自定义';
+            scheduleDefaultTips();
+            // 空框，或者框里还是上次自动填进去的内容，才回填
+            if (el.value && el.value !== el.dataset.dftFilled) return;
+            var text = currentDefaultText($td);
+            if (!text || text === el.value) return;
+            el.value = text;
+            el.dataset.dftFilled = text;
+            setTimeout(function () { try { el.select(); } catch (err) { } }, 0);
+        }, true);
+
+        // 把搜索框里的内容连同它属于哪一行一起记下来
+        function captureDefaultInput(input, $td) {
+            defaultTypedText = $.trim(input.value);
+            defaultTypedIndex = $td.closest('tr').attr('data-index');
+        }
+
+        // 点到搜索框和下拉项以外的地方（含提交按钮）就落地；捕获阶段，抢在表格关闭单元格之前
+        document.addEventListener('mousedown', function (e) {
+            if (defaultTypedIndex == null) return;
+            var $target = $(e.target);
+            if ($target.closest('.xm-search, .xm-body, .layui-tableEdit, .layui-tableEdit-div').length) return;
+            commitDefaultTypedText();
+        }, true);
+
+        $("#F_ModuleId").val($.request("F_ModuleId"));
+        //权限字段
+        common.authorizeFields('adminform');
+        //此处需修改
+        //类型为时间时
+        //laydate.render({
+        //elem: '#F_Birthday'
+        //, btns: ['clear', 'now']
+        //, trigger: 'click',
+        //format: 'yyyy-MM-dd',
+        //});
+        $(function () {
+            //此处需修改
+            //绑定数据源
+            //类型为下拉框时
+            // $("#F_DataType").bindSelect({
+            //     data: top.clients.dataItems["ModuleDataType"],
+            //     id: ""
+            // });
+
+            // $("#F_ProcName").bindSelect({
+            //     url: "/SystemManage/CodeGenerator/GetProcTableJson",
+            //     id: "Name",
+            //     text: "Name",
+            //     search: true,
+            // });
+            if (!!keyValue) {
+                common.ajax({
+                    url: '/SystemManage/ModulePlan/GetFormJson',
+                    dataType: 'json',
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        // 先按 sortcode 升序排好（空值排最后），再按新行号补默认值的行级选项，
+                        // 保证行号与 defaultRowConfig 的索引一致
+                        var planData = (JSON.parse(data.F_PlanParam) || []).sort(function (a, b) {
+                            var sa = parseFloat(a.sortcode), sb = parseFloat(b.sortcode);
+                            if (isNaN(sa) && isNaN(sb)) return 0;
+                            if (isNaN(sa)) return 1;
+                            if (isNaN(sb)) return -1;
+                            return sa - sb;
+                        });
+                        listData = planData.map(function (item, index) {
+                            // 存下来的默认值可能不在公共五项里，先补成“这一行”的下拉项，格子上才显示得出来
+                            ensureDefaultOption(index, item.defaultvalue, item.defaultname);
+                            return {
+                                F_Fields: { name: item.fieldname, value: item.fieldvalue },
+                                F_IsVerify: item.isverify == 1 ? 1 : 0,
+                                F_IsStandard: item.isstandard == 1 ? 1 : 0,
+                                F_DefaultValue: item.defaultvalue || '',
+                                F_SortCode: item.sortcode
+                            }
+                        });
+                    }
+                });
+            }
+            initControl();
+            form.render();
+        });
+        wcLoading.close();
+
+        function initControl() {
+            var fieldsData = [];
+            common.ajax({
+                url: '/SystemManage/ModuleFields/GetFilterJson',
+                dataType: 'json',
+                data: { F_ModuleId: $.request("F_ModuleId") },
+                async: false,
+                success: function (data) {
+                    fieldsData = data.map(function (item) {
+                        return {
+                            value: item.F_EnCode,
+                            name: item.F_FullName + '(' + item.F_EnCode + ')'
+                        }
+                    });
+                }
+            });
+            fieldSelectData = fieldsData;
+            //加载已有方案时，字段可能已从模块中移除：这类行不再显示
+            listData = listData.filter(function (item) {
+                var value = item.F_Fields && typeof item.F_Fields === 'object' ? item.F_Fields.value : item.F_Fields;
+                if (value == null || value === '') return false;
+                return fieldsData.some(function (f) {
+                    return String(f.value).toLowerCase() === String(value).toLowerCase();
+                });
+            });
+            //行号变了，按过滤后的顺序重建默认值的行级选项（原地清空，列配置拿的是这两个对象本身）
+            Object.keys(defaultRowConfig).forEach(function (k) { delete defaultRowConfig[k]; });
+            Object.keys(defaultRowOptions).forEach(function (k) { delete defaultRowOptions[k]; });
+            listData.forEach(function (row, index) {
+                var val = row[DEFAULT_VALUE_FIELD];
+                if (val == null || val === '') return;
+                var dv = val && typeof val === 'object' ? val.value : val;
+                var dn = val && typeof val === 'object' ? val.name : '';
+                if (dv) ensureDefaultOption(index, dv, dn);
+            });
+            var cols = [[
+                { type: "checkbox", width: 50, fixed: 'left' },
+                {
+                    field: 'F_Fields', title: '<span title="选中过滤的模块字段">主视图字段名称</span><span class="requiredcolumn">*</span>', width: '55%', event: 'F_Fields', config: { type: 'select', data: fieldsData, verify: { type: "required" } }, templet: function (d) {
+                        if (d.F_Fields || d.F_Fields == 0) {
+                            if (d.F_Fields.value || d.F_Fields.value == 0) {
+                                return d.F_Fields.name;
+                            }
+                            for (var i = 0; i < fieldsData.length; i++) {
+                                if (fieldsData[i].value == d.F_Fields) {
+                                    return fieldsData[i].name;
+                                }
+                            }
+                        }
+                        return '';
+                    }
+                },
+                {
+                    field: 'F_DefaultValue', title: '默认值', event: 'F_DefaultValue', width: 100,
+                    // filterable 可搜索；radio + clickClose 单选、选完就收起
+                    // data 是公共五项；rowConfig 给每一行单独覆盖 data（公共五项 + 这一行自己的自定义项）
+                    config: {
+                        type: 'select',
+                        data: defaultValueList,
+                        rowConfig: defaultRowConfig,
+                        filterable: true,
+                        radio: true,
+                        clickClose: true,
+                        filterMethod: function (filterValue, item) {
+                            // 搜索被清空（选中下拉项/收起下拉）时，之前手输的内容就作废了
+                            if (!filterValue) defaultTypedText = '';
+                            return !filterValue || String(item.name).indexOf(filterValue) > -1;
+                        }
+                    },
+                    templet: function (d) {
+                        var val = d.F_DefaultValue;
+                        if (val && typeof val === 'object') return val.name || val.value || '';
+                        return defaultOptionName(val);
+                    }
+                },
+                {
+                    /* tableEdit 组件不支持 checkbox 编辑类型，
+                       这里用 templet 渲染原生勾选框，值直接存 0/1，
+                       点击事件在下方 form.on('checkbox(...)') 里写回行缓存 */
+                    field: 'F_IsVerify', title: '必填', width: 60, align: 'center', templet: function (d) {
+                        return '<input type="checkbox" lay-filter="cbIsVerify"' + (d.F_IsVerify == 1 ? ' checked' : '') + '>';
+                    }
+                },
+                {
+                    field: 'F_IsStandard', title: '常用', width: 60, align: 'center', templet: function (d) {
+                        return '<input type="checkbox" lay-filter="cbIsStandard"' + (d.F_IsStandard == 1 ? ' checked' : '') + '>';
+                    }
+                },
+                {
+                    field: 'F_SortCode', title: '排序<span class="requiredcolumn">*</span>', event: 'F_SortCode', width: 80, config: { type: 'input', inputType: 'number', verify: { type: "required" } }
+                }
+            ]]
+            commonTable.createtable({
+                elem: '#currentTableId',
+                data: listData,
+                defaultToolbar: [],
+                search: false,
+                limit: 9999,//每页数据 默认
+                page: false,
+                height: 'full-185',
+                filter: {
+                    clearFilter: false,
+                },
+                cols: cols,
+                //勾选行数对应的按钮显隐（替代原来的手动 tableRowClick）
+                oneBtnList: [],//选择1条显示
+                moreBtnList: ["NF-delete"],//多条显示
+                //注意：createtable 内部还会再绑一次 table.on('toolbar(currentTableFilter)')，
+                //而 layui 对带 filter 的事件是“后注册覆盖先注册”，页面级监听会被覆盖失效，
+                //所以子表的新增/删除必须通过 onToolbar 回调处理
+                onToolbar: function (obj) {
+                    //其他事件（打印/导入等）交给 commonTable 内部逻辑
+                    if (obj.event !== 'add' && obj.event !== 'delete') return;
+                    var data = table.checkStatus('currentTableId').data;
+                    if (obj.event === 'add') {
+                        var alldata = table.cache.currentTableId;
+                        alldata.push({ F_Id: uuid(), F_Fields: '', F_IsVerify: 0, F_IsStandard: 0 });
+                        table.reload('currentTableId', { data: alldata });
+                        rebuildDefaultRowConfig();
+                        form.render('checkbox');
+                    }
+                    else if (obj.event === 'delete') {
+                        if (data.length == 0) {
+                            common.modalMsg("未选中数据", "warning");
+                            return false;
+                        }
+                        common.modalConfirm("注：您确定要删除选择的数据吗？", function (r) {
+                            if (r) {
+                                var alldata = table.cache.currentTableId;
+                                for (var j = 0; j < data.length; j++) {
+                                    for (var i = alldata.length - 1; i >= 0; i--) {
+                                        if (alldata[i].F_Fields == data[j].F_Fields) {
+                                            alldata.splice(i, 1);
+                                            break;
+                                        }
+                                    }
+                                }
+                                table.reload('currentTableId', { data: alldata });
+                                rebuildDefaultRowConfig();
+                                form.render('checkbox');
+                            }
+                        });
+                    }
+                    return false;//已处理，阻止内部逻辑（如新增前的单元格校验拦截）
+                }
+            });
+            // form.render('checkbox'); //渲染 templet 里的勾选框
+            // var aopTable = tableEdit.aopObj(cols); //获取一个aop对象
+            // aopTable.on('tool(currentTableFilter)', function (obj) {
+            //     var field = obj.field; //单元格字段
+            //     var value = obj.value; //修改后的值
+            //     var data = obj.data; //当前行旧数据
+            //     var event = obj.event; //当前单元格事件属性值
+            //     // 默认值格子有变更，说明这次输入已经落地（点选了下拉项或已提交），别再当成手输内容
+            //     if (field === DEFAULT_VALUE_FIELD) {
+            //         defaultTypedText = '';
+            //         defaultTypedIndex = null;
+            //     }
+            //     var update = {};
+            //     update[field] = value;
+            //     //把value更新到行中
+            //     obj.update(update);
+            // });
+            //是否必填/是否常用勾选框：点击后直接写回行缓存（值存 0/1）
+            form.on('checkbox(cbIsVerify)', function (obj) {
+                var index = $(obj.elem).closest('tr').attr('data-index');
+                var row = (table.cache.currentTableId || [])[index];
+                if (row) row.F_IsVerify = obj.elem.checked ? 1 : 0;
+            });
+            form.on('checkbox(cbIsStandard)', function (obj) {
+                var index = $(obj.elem).closest('tr').attr('data-index');
+                var row = (table.cache.currentTableId || [])[index];
+                if (row) row.F_IsStandard = obj.elem.checked ? 1 : 0;
+            });
+
+        }
+
+        const hasDuplicate = (arr, key) => {
+            const seen = new Set();
+            for (const item of arr) {
+                if (seen.has(item[key])) {
+                    return true; // 找到重复项
+                }
+                seen.add(item[key]);
+            }
+            return false; // 没有找到重复项
+        };
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            if (!eipTableEdit.valid())
+                return false;
+            // 下拉里刚输的搜索内容还没落地，先补成选项并写回格子，否则取缓存时是旧值
+            commitDefaultTypedText();
+            var postData = data.field;
+            var params = [];
+            table.cache.currentTableId.forEach(item => {
+                var dv = item[DEFAULT_VALUE_FIELD];
+                var dvValue = dv && typeof dv === 'object' ? (dv.value || '') : (dv == null ? '' : String(dv));
+                var dvName = dv && typeof dv === 'object' ? (dv.name || '') : defaultOptionName(dvValue);
+                // 修改内容：fieldname 统一存下拉项的显示文本；格子里只有 value（单元格编辑只回写值）时按 fieldsData 反查 text，查不到再退回原值
+                var raw = item.F_Fields;
+                var fv = raw && typeof raw === 'object' ? raw.value : raw;
+                var fn = raw && typeof raw === 'object' ? (raw.name || '') : '';
+                if ((!fn || fn === '') && fv != null && fv !== '') {
+                    for (var i = 0; i < fieldSelectData.length; i++) {
+                        if (String(fieldSelectData[i].value).toLowerCase() === String(fv).toLowerCase()) { fn = fieldSelectData[i].name; break; }
+                    }
+                }
+                params.push({
+                    fieldname: fn || fv, fieldvalue: fv,
+                    defaultname: dvName, defaultvalue: dvValue,
+                    isverify: item.F_IsVerify == 1 ? 1 : 0,
+                    isstandard: item.F_IsStandard == 1 ? 1 : 0,
+                    sortcode: item.F_SortCode
+                });
+            });
+            if (hasDuplicate(params, "fieldvalue")) {
+                common.modalMsg("字段重复，请重新选择!");
+                return false;
+            }
+            postData.F_PlanParam = JSON.stringify(params);
+            //同一模块下只允许存在一条类型为“搜索”(F_PlanType=0)的方案，新增/改为搜索类型前先查重（编辑时排除自己）
+            if (postData.F_PlanType == 0) {
+                var hasSearchType = false;
+                common.ajax({
+                    url: '/SystemManage/ModulePlan/GetGridJson?moduleId=' + encodeURIComponent(postData.F_ModuleId) + '&page=1&limit=9999',
+                    dataType: 'json',
+                    async: false,
+                    success: function (res) {
+                        var rows = (res && res.data) || [];
+                        hasSearchType = rows.some(function (item) {
+                            return item.F_PlanType == 0 && item.F_Id != keyValue;
+                        });
+                    }
+                });
+                if (hasSearchType) {
+                    common.modalMsg("该模块下只能配置一个搜索功能!", "warning");
+                    return false;
+                }
+            }
+            common.submitForm({
+                url: '/SystemManage/ModulePlan/SubmitForm?keyValue=' + keyValue,
+                param: postData,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+
+    function selectFileds() {
+        if (!$("#F_ObjectName").val()) {
+            layer.msg("请先选择对象");
+            return false;
+        }
+    }
+</script>
+<style type="text/css">
+
+</style>
+<script type="text/html" id="currentTableBar">
+   <a id="NF-edit" authorize class="layui-btn layui-btn-xs  layui-btn-warm" lay-event="edit">新增</a>
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">功能名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_PlanName" name="F_PlanName" autocomplete="off"
+                                lay-verify="required" maxlength="5" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">功能编码</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" autocomplete="off" lay-verify="required"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">按钮名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_ButtonName" name="F_ButtonName" autocomplete="off"
+                                lay-verify="required" maxlength="2" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">功能类型</label>
+                        <div class="layui-input-block">
+                            <select id="F_PlanType" name="F_PlanType" lay-verify="required" lay-filter="F_PlanType">
+                                <option value="">请选择</option>
+                                <option value="0">搜索</option>
+                                <option value="1">应用</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">功能提示</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_PlanTitps" name="F_PlanTitps" autocomplete="off" placeholder="请输入"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Remark" name="F_Remark" autocomplete="off" placeholder="请输入"
+                                class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">存储过程</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Stored" name="F_Stored" style="min-height:100px;" class="layui-textarea"
+                                placeholder="--默认为空,如果有存储过程,则执行存储过程,如果没有,则执行查询sql
+BEGIN TRY
+    EXEC [dbo].proc_CreateSalary
+        &#64;entity = &#64;entity,
+        &#64;DATA=&#64;DATA OUTPUT,
+        &#64;state = &#64;state OUTPUT,
+        &#64;message = &#64;message OUTPUT;
+END TRY
+BEGIN CATCH
+    SET &#64;state = 3;
+    SET &#64;message = '失败:' + ERROR_MESSAGE();
+END CATCH
+SELECT &#64;state AS state, &#64;message AS message,&#64;DATA AS DATA;"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12">
+                        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                    <input type="hidden" id="F_ModuleId" name="F_ModuleId" />
+                </div>
+                <script type="text/html" id="toolbarDemo">
+                <div class="layui-btn-container" id="toolbar">
+                    <button id="NF-add" name="NF-add" class="layui-btn layui-btn-sm" lay-event="add"><i class="layui-icon">&#xe642;</i>添加</button>
+                    <button id="NF-delete" name="NF-delete" class="layui-btn layui-btn-sm layui-btn-danger layui-hide" lay-event="delete"><i class="layui-icon">&#xe640;</i>删除</button>
+                </div>
+            </script>
+            </div>
+        </div>
+    </div>
+</body>

@@ -1,0 +1,627 @@
+﻿@{
+ViewBag.Title = "Index";
+Layout = "~/Views/Shared/_Index.cshtml";
+}
+<style>
+    html{
+        border:1px solid #f2f2f2;
+    }
+    html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #fffffe;
+        padding:5px;
+        box-sizing: border-box;
+    }
+    .monaco-page .layui-tab[lay-filter="monacoLangTab"] {
+        display:flex;
+        background: #f2f2f2;
+        height: 35px;
+        align-items: stretch;
+    }
+    .monaco-page .layui-tab[lay-filter="monacoLangTab"] .layui-tab-title {
+        height: 35px;
+        line-height: 35px;
+        padding: 0;
+        flex:1;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+    }
+    /* 标签过多时 Layui 会插入 .layui-tab-bar 下拉/滚动钮；这里用横向滚动，隐藏该按钮 */
+    .monaco-page .layui-tab[lay-filter="monacoLangTab"] .layui-tab-bar {
+        display: none !important;
+    }
+    .monaco-page .layui-tab[lay-filter="monacoLangTab"] .layui-tab-title li {
+        height: 35px;
+        line-height: 35px;
+        display: inline-block;
+        float: none;
+        vertical-align: top;
+    }
+    .monaco-page .layui-tab-brief > .layui-tab-title li:after {
+        border-bottom:0 !important;
+    }
+    /* + 跟在最后一个标签后面，随标签一起滚动 */
+    .monaco-page .layui-tab-title li.tab-add {
+        padding: 0 10px;
+        min-width: 28px;
+        text-align: center;
+        font-size: 18px;
+        color: #666;
+        cursor: pointer;
+        user-select: none;
+    }
+    .monaco-page .layui-tab-title li.tab-add:hover {
+        background: rgba(0,0,0,.06);
+        color: #333;
+    }
+    .monaco-page .layui-tab-title li.tab-add.layui-this {
+        background: transparent !important;
+        color: #666;
+    }
+    .monaco-page .layui-tab-title li.tab-add:after {
+        display: none !important;
+    }
+    .monaco-page {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        border:1px solid #e6e6e6;
+    }
+    .monaco-page .layui-tab {
+        margin: 0;
+    }
+    .monaco-page .layui-tab-title .tab-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 4px;
+        vertical-align: middle;
+        background: #67c23a;
+    }
+    .monaco-page .layui-tab-title li.is-dirty .tab-dot {
+        background: #e6a23c;
+    }
+    .tpl-tab-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding-right: 10px;
+        flex-shrink: 0;
+    }
+    .monaco-editor-wrap {
+        flex: 1;
+        margin-top:5px;
+    }
+    #monacoFrame {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .monaco-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 36px;
+        padding: 0 16px;
+        background: #2D8CF0;
+        color: #fff;
+    }
+    .btn-save {
+        height: 22px;
+        line-height: 22px;
+        padding: 0 10px;
+        border: none;
+        border-radius: 3px;
+        background: rgba(255,255,255,.18);
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background .15s ease;
+        display: inline-flex;
+        gap: 4px;
+    }
+    .btn-save:hover {
+        background: rgba(255,255,255,.28);
+    }
+    .btn-save:active {
+        background: rgba(255,255,255,.12);
+    }
+    .layui-btn.layui-hide {
+        display: none !important;
+    }
+</style>
+
+<button type="submit" class="layui-btn layui-btn-primary layui-hide" lay-submit lay-filter="data-search-btn">
+    <i class="layui-icon">&#xe615;</i> 搜 索
+</button>
+
+<div class="monaco-page">
+    <div class="layui-tab layui-tab-brief" lay-filter="monacoLangTab">
+        <ul class="layui-tab-title" id="tplTabTitle">
+            <li class="layui-this" lay-id="0" data-fixed="1">
+                <span class="tab-dot"></span>
+                首页
+            </li>
+            <li class="tab-add" id="btnAddTpl" title="新建表单">+</li>
+        </ul>
+        <div class="tpl-tab-actions">
+            <div class="layui-form" style="width:165px;">
+                <select id="codeHistorySelect" lay-filter="codeHistorySelect" lay-search>
+                    <option value="">当前版本</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="monaco-editor-wrap">
+        <iframe id="monacoFrame" src="/page/monaco.html" frameborder="0"></iframe>
+    </div>
+
+    <div class="monaco-footer">
+        <div class="monaco-footer-left">
+        </div>
+        <div class="monaco-footer-right">
+            <button type="button" class="btn-save layui-hide" title="删除当前表单" id="btnDeleteForm">
+                <i class="layui-icon layui-icon-delete"></i> 删除
+            </button>
+            <button type="button" class="btn-save" title="生成当前页默认模板" id="btnDefaultCode">
+                <i class="layui-icon layui-icon-template-1"></i> 默认
+            </button>
+            <button type="button" class="btn-save" title="保存代码并且保存历史" id="btnSaveCode">
+                <i class="layui-icon layui-icon-ok"></i> 保存
+            </button>
+            <button type="button" class="btn-save" title="保存并预览" id="btnPreviewCode">
+                <i class="layui-icon layui-icon-eye"></i> 预览
+            </button>
+        </div>
+    </div>
+</div>
+<script src="/js/form-template.js"></script>
+<script>
+    layui.use(['jquery', 'form', 'common', 'layer', 'element'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            common = layui.common,
+            layer = layui.layer,
+            element = layui.element;
+
+        var moduleId = $.request("moduleId");
+        var rowdata = JSON.parse(sessionStorage.getItem('historymoduledata') || '');
+
+        // forms[0] 首页 FormIndex=0；其后为表单，和新建一样
+        let cacheCode = { forms: [{ formIndex: 0, code: "" }] };
+        let currTabIndex = 0;
+        var HOME_TAB = 0;
+        let loaded = false;
+        let dirtyMap = {};
+        let savedMap = {};
+
+        // ========== 通用 ==========
+
+        // 同步请求，返回接口 data
+        function syncAjax(url, data, method) {
+            let result = null;
+            common.ajax({
+                url: url,
+                method: method,
+                data: data,
+                async: false,
+                success: res => { result = typeof res.data !== "undefined" ? res.data : res; }
+            });
+            return result;
+        }
+
+        // 取编辑器 iframe
+        function getFrame() {
+            return document.getElementById('monacoFrame');
+        }
+
+        // 取某一页的缓存项
+        function getFormItem(index) {
+            return (cacheCode.forms || [])[index] || null;
+        }
+
+        // 取某一页的代码
+        function getTabCode(index) {
+            var item = getFormItem(index);
+            return item ? (item.code || "") : "";
+        }
+
+        // 写入某一页的代码
+        function setTabCode(index, codeStr) {
+            cacheCode.forms = cacheCode.forms || [];
+            if (!cacheCode.forms[index]) cacheCode.forms[index] = { formIndex: null, code: "" };
+            cacheCode.forms[index].code = codeStr;
+        }
+
+        // 把编辑器当前内容写回缓存
+        function syncCode(frame) {
+            if (frame && frame.contentWindow && frame.contentWindow.getEditorContent) {
+                setTabCode(currTabIndex, JSON.stringify(frame.contentWindow.getEditorContent()));
+            }
+        }
+
+        // 页签显示名
+        function tabTitle(index) {
+            if (index === HOME_TAB) return '首页';
+            return '表单' + index;
+        }
+
+        // 是否首页（不可删）
+        function isFixedTab(index) {
+            return index === HOME_TAB;
+        }
+
+        // ========== 脏标记 ==========
+
+        // 这一页有没有未保存改动
+        function isDirty(index) {
+            return !!dirtyMap[index];
+        }
+
+        // 设置脏标记并刷新页签圆点
+        function setDirty(index, dirty) {
+            dirtyMap[index] = !!dirty;
+            refreshTabTitle(index);
+        }
+
+        // 把当前内容记为已保存
+        function markSaved(index) {
+            savedMap[index] = getTabCode(index);
+            setDirty(index, false);
+        }
+
+        // 用缓存里的代码作为各页已保存快照
+        function markAllSavedFromCache() {
+            dirtyMap = {};
+            savedMap = {};
+            (cacheCode.forms || []).forEach(function (item, i) {
+                savedMap[i] = item.code || "";
+                dirtyMap[i] = false;
+            });
+        }
+
+        // 刷新一个页签的脏标记样式
+        function refreshTabTitle(index) {
+            var $li = $('#tplTabTitle li[lay-id="' + index + '"]');
+            if (!$li.length) return;
+            $li.toggleClass('is-dirty', isDirty(index));
+            $li.attr('title', isDirty(index) ? '有未保存的更改' : '');
+        }
+
+        // 刷新全部页签脏标记
+        function refreshAllTabTitles() {
+            (cacheCode.forms || []).forEach(function (_, i) { refreshTabTitle(i); });
+        }
+
+        // 对照编辑器内容和已保存快照，更新当前页脏标记
+        function syncDirtyFromEditor() {
+            syncCode(getFrame());
+            var code = getTabCode(currTabIndex);
+            var saved = savedMap[currTabIndex];
+            if (saved === undefined) saved = '';
+            setDirty(currTabIndex, code !== saved);
+        }
+
+        // ========== 加载模块代码 ==========
+
+        // 从后端拉 F_FormCode，写入 cacheCode
+        function loadFormCode() {
+            if (loaded) return;
+            cacheCode = { forms: [{ formIndex: 0, code: "" }] };
+            const res = syncAjax('/SystemManage/Module/GetFormJson', { keyValue: moduleId });
+            if (res && res.F_FormCode) {
+                JSON.parse(res.F_FormCode).forEach(function (item) {
+                    var row = {
+                        formIndex: item.Index,
+                        code: decodeURIComponent(escape(atob(item.Code)))
+                    };
+                    if (item.Index === HOME_TAB) cacheCode.forms[HOME_TAB] = row;
+                    else cacheCode.forms.push(row);
+                });
+            }
+            markAllSavedFromCache();
+            loaded = true;
+        }
+
+        // ========== 编辑器 ==========
+
+        // 把某一页代码填进编辑器，空页不套模板
+        function renderEditor(frame, index) {
+            var win = (frame || getFrame() || {}).contentWindow;
+            if (!win || !win.setEditorLangAndCode) return;
+            var codeStr = getTabCode(index);
+            var codeData = codeStr ? JSON.parse(codeStr) : "";
+            win.setEditorLangAndCode('cshtml', codeData);
+        }
+
+        // ========== 页签 ==========
+
+        // 重绘附加表单页签，并选中当前页
+        function renderCustomTabs() {
+            var $ul = $('#tplTabTitle');
+            $ul.find('li[lay-id]').not('[data-fixed]').remove();
+            $ul.find('li.tab-add').remove();
+            (cacheCode.forms || []).forEach(function (item, i) {
+                if (isFixedTab(i)) return;
+                var $li = $('<li></li>').attr('lay-id', String(i))
+                    .append($('<span class="tab-dot"></span>'))
+                    .append(document.createTextNode(' ' + tabTitle(i)));
+                $ul.append($li);
+            });
+            $ul.append('<li class="tab-add" id="btnAddTpl" title="新建表单">+</li>');
+            element.render('tab', 'monacoLangTab');
+            element.tabChange('monacoLangTab', String(currTabIndex));
+            $ul.find('li.tab-add').removeClass('layui-this');
+            refreshAllTabTitles();
+            syncDeleteButton();
+        }
+
+        // 首页隐藏删除按钮
+        function syncDeleteButton() {
+            $('#btnDeleteForm').toggleClass('layui-hide', isFixedTab(currTabIndex));
+        }
+
+        // 新建附加表单
+        $('#tplTabTitle').on('click', 'li.tab-add', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $(this).removeClass('layui-this');
+            syncDirtyFromEditor();
+            cacheCode.forms = cacheCode.forms || [];
+            cacheCode.forms.push({
+                formIndex: null,
+                code: ""
+            });
+            currTabIndex = cacheCode.forms.length - 1;
+            savedMap[currTabIndex] = '';
+            dirtyMap[currTabIndex] = true;
+            renderCustomTabs();
+            renderEditor(getFrame(), currTabIndex);
+            loadCodeHistory();
+            return false;
+        });
+
+        // 阻止 + 页签被 Layui 选中
+        $('#tplTabTitle').on('mousedown', 'li.tab-add', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+        });
+
+        // 删除当前附加表单
+        $('#btnDeleteForm').on('click', function () {
+            var idx = currTabIndex;
+            if (isFixedTab(idx)) return;
+            layer.confirm('确认删除「' + tabTitle(idx) + '」？', { icon: 3, title: '提示' }, function (index) {
+                layer.close(index);
+                syncCode(getFrame());
+                var item = getFormItem(idx);
+                if (item && item.formIndex != null) {
+                    var ok = syncAjax(
+                        '/SystemManage/Module/SubmitUpdateFormCode',
+                        buildSubmitData('delete', idx, ''),
+                        'POST'
+                    );
+                    if (!ok) {
+                        layer.msg('删除失败', { icon: 2, time: 1500 });
+                        return;
+                    }
+                }
+                cacheCode.forms.splice(idx, 1);
+                var nextDirty = {}, nextSaved = {};
+                Object.keys(dirtyMap).forEach(function (k) {
+                    var i = parseInt(k, 10);
+                    if (i === idx) return;
+                    nextDirty[i > idx ? i - 1 : i] = dirtyMap[k];
+                });
+                Object.keys(savedMap).forEach(function (k) {
+                    var i = parseInt(k, 10);
+                    if (i === idx) return;
+                    nextSaved[i > idx ? i - 1 : i] = savedMap[k];
+                });
+                dirtyMap = nextDirty;
+                savedMap = nextSaved;
+                if (currTabIndex === idx) currTabIndex = HOME_TAB;
+                else if (currTabIndex > idx) currTabIndex -= 1;
+                renderCustomTabs();
+                renderEditor(getFrame(), currTabIndex);
+                loadCodeHistory();
+            });
+        });
+
+        // 切换页签：先记下离开页的脏状态，再加载目标页
+        element.on('tab(monacoLangTab)', function () {
+            var $li = $(this);
+            if ($li.hasClass('tab-add')) {
+                element.tabChange('monacoLangTab', String(currTabIndex));
+                $li.removeClass('layui-this');
+                return;
+            }
+            var newIndex = parseInt($li.attr('lay-id'), 10);
+            if (isNaN(newIndex) || newIndex === currTabIndex) return;
+            syncDirtyFromEditor();
+            currTabIndex = newIndex;
+            renderEditor(getFrame(), currTabIndex);
+            loadCodeHistory();
+            syncDeleteButton();
+        });
+
+        // ========== 历史版本 ==========
+
+        // 历史记录：F_Id → 代码
+        let historyCodeMap = {};
+
+        // 拉当前页历史列表，填下拉框
+        function loadCodeHistory() {
+            var item = getFormItem(currTabIndex);
+            // 新建表单还没有 FormIndex，不带这个参数时接口会按 0 返回上一张表单的历史
+            if (!item || item.formIndex == null) {
+                historyCodeMap = {};
+                $('#codeHistorySelect').html('<option value="">当前版本</option>');
+                form.render('select');
+                return;
+            }
+            var query = { moduleId: moduleId, formIndex: item.formIndex };
+            const list = syncAjax('/SystemManage/Module/GetFormHistoryList', query) || [];
+            historyCodeMap = {};
+            const options = ['<option value="">当前版本</option>'].concat(list.map(function (h) {
+                var id = h.F_Id || '';
+                if (!id) return '';
+                historyCodeMap[id] = h.F_FormCode || '';
+                return '<option value="' + id + '">' + (h.F_CreatorTime || '') + '</option>';
+            }).filter(Boolean));
+            $('#codeHistorySelect').html(options.join(''));
+            form.render('select');
+        }
+
+        // 切到某条历史，或空值切回当前已保存版本
+        function applyHistoryCode(historyId) {
+            const frame = getFrame();
+            syncCode(frame);
+            if (!historyId) {
+                loaded = false;
+                loadFormCode();
+                renderCustomTabs();
+                renderEditor(frame, currTabIndex);
+                return;
+            }
+            var formCode = historyCodeMap[historyId];
+            if (!formCode) {
+                layer.msg('未找到该历史版本', { icon: 2, time: 1500 });
+                return;
+            }
+            setTabCode(currTabIndex, decodeURIComponent(escape(atob(formCode))));
+            renderEditor(frame, currTabIndex);
+            setDirty(currTabIndex, getTabCode(currTabIndex) !== (savedMap[currTabIndex] || ''));
+        }
+
+        form.on('select(codeHistorySelect)', function (data) {
+            const value = data.value || '';
+            layer.confirm(value ? '切换历史版本将覆盖当前表单内容，是否继续？' : '确认切回当前版本？', { icon: 3, title: '提示' }, function (index) {
+                layer.close(index);
+                applyHistoryCode(value);
+            });
+        });
+
+        // 点历史下拉时不要触发行页签切换
+        $('#codeHistorySelect').closest('.layui-form').on('mousedown click', function (e) {
+            e.stopPropagation();
+        });
+
+        // ========== 保存 / 预览 ==========
+
+        // 组装提交参数：首页固定 edit + FormIndex；表单页新增不传 FormIndex
+        function buildSubmitData(action, tabIndex, formCode) {
+            var item = getFormItem(tabIndex);
+            var data = {
+                F_Id: moduleId,
+                FormCode: formCode || '',
+                FormAction: action
+            };
+            if (isFixedTab(tabIndex)) {
+                data.FormIndex = tabIndex;
+                data.FormAction = 'edit';
+            } else if (action !== 'add' && item && item.formIndex != null) {
+                data.FormIndex = item.formIndex;
+            }
+            return data;
+        }
+
+        // 当前页代码转成提交用的 base64
+        function encodeCurrentForm() {
+            syncCode(getFrame());
+            return btoa(unescape(encodeURIComponent(getTabCode(currTabIndex) || "")));
+        }
+
+        // 保存当前页；saveHistory 为 true 时同时写历史
+        function submitFormCode(saveHistory) {
+            var item = getFormItem(currTabIndex);
+            var action = isFixedTab(currTabIndex) || (item && item.formIndex != null) ? 'edit' : 'add';
+            var formCode = encodeCurrentForm();
+            var payload = buildSubmitData(action, currTabIndex, formCode);
+            if (!saveHistory) payload.Ishistory = false;
+            var data = syncAjax('/SystemManage/Module/SubmitUpdateFormCode', payload, 'POST');
+            if (data) {
+                if (action === 'add' && data.id) {
+                    cacheCode.forms[currTabIndex].formIndex = data.id;
+                }
+                markSaved(currTabIndex);
+                layer.msg("代码已保存", { icon: 1, time: 1500 });
+                if (saveHistory) loadCodeHistory();
+            }
+        }
+
+        // 按当前页生成默认模板：首页用 index，表单页用 cshtml
+        function applyDefaultTemplate() {
+            layer.confirm('确认生成默认模板？将覆盖当前内容', { icon: 3, title: '提示' }, function (index) {
+                layer.close(index);
+                var tpl = currTabIndex === HOME_TAB ? window.FormTemplate.index : window.FormTemplate.cshtml;
+                setTabCode(currTabIndex, JSON.stringify(tpl));
+                renderEditor(getFrame(), currTabIndex);
+                setDirty(currTabIndex, getTabCode(currTabIndex) !== (savedMap[currTabIndex] || ''));
+            });
+        }
+
+        // 确认后保存并记历史
+        function saveCode() {
+            layer.confirm('确认保存当前表单？', { icon: 3, title: '提示' }, function (index) {
+                layer.close(index);
+                submitFormCode(true);
+            });
+        }
+
+        // 先保存再打开预览；首页预览列表页，其它页预览 Form
+        function previewCode() {
+            var item = getFormItem(currTabIndex);
+            var action = isFixedTab(currTabIndex) || (item && item.formIndex != null) ? 'edit' : 'add';
+            var formCode = encodeCurrentForm();
+            var payload = buildSubmitData(action, currTabIndex, formCode);
+            payload.Ishistory = false;
+            var data = syncAjax('/SystemManage/Module/SubmitUpdateFormCode', payload, 'POST');
+            if (data) {
+                if (action === 'add' && data.id) {
+                    cacheCode.forms[currTabIndex].formIndex = data.id;
+                }
+                markSaved(currTabIndex);
+            }
+            var previewUrl = (rowdata && rowdata.F_UrlAddress) || '';
+            if (previewUrl && currTabIndex !== HOME_TAB) {
+                previewUrl = previewUrl.replace(/Index/gi, 'Form');
+                previewUrl += (previewUrl.indexOf('?') > -1 ? '&' : '?') + 'isPreview=true&formIndex=' + cacheCode.forms[currTabIndex].formIndex;
+            }
+            (top.layer || layer).open({
+                type: 2,
+                title: false,
+                area: ['80%', '80%'],
+                content: previewUrl
+            });
+        }
+
+        $('#btnDefaultCode').on('click', applyDefaultTemplate);
+        $('#btnSaveCode').on('click', saveCode);
+        $('#btnPreviewCode').on('click', previewCode);
+
+        // ========== 启动 ==========
+
+        window.addEventListener('message', function (e) {
+            if (!e.data || !e.data.type) return;
+            if (e.data.type === 'EDITOR_READY') {
+                renderEditor(getFrame(), currTabIndex);
+            } else if (e.data.type === 'SAVE_CODE') {
+                submitFormCode(false);
+            } else if (e.data.type === 'EDITOR_DIRTY') {
+                syncDirtyFromEditor();
+            }
+        });
+        loadFormCode();
+        renderCustomTabs();
+        loadCodeHistory();
+        wcLoading.close();
+    });
+</script>

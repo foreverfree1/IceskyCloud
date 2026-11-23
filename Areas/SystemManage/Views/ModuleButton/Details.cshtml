@@ -1,0 +1,417 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'common', 'iconPicker', 'optimizeSelectOption'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            iconPicker = layui.iconPicker,
+            common = layui.common,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        var moduleId = $.request("moduleId");
+        //权限字段
+        common.authorizeFields('adminform');
+        $(function () {
+            // 图标选择器（layui 内置图标，fontClass 模式）：须在 checkIcon 之前渲染
+            iconPicker.render({
+                elem: '#iconPicker',
+                type: 'fontClass',
+                page: true,
+                search: true,
+                click: function (data) {
+                    $("#F_Icon").val(data.icon);
+                }
+            });
+            // 该组件没有 success 回调，面板 DOM 是同步插入的，render 后直接追加「清除图标」按钮（放大镜后面）
+            var $searchPanel = $("#iconPicker").next(".layui-iconpicker").find(".layui-iconpicker-search");
+            if ($searchPanel.length) {
+                $searchPanel.find(".layui-input").css("width", "68%");
+                $searchPanel.find(".layui-icon").css("right", "14%");
+                $('<i class="layui-icon">&#x1006;</i>')
+                    .insertAfter($searchPanel.find(".layui-icon"))
+                    .on('click', function (e) {
+                        e.stopPropagation();
+                        clearIcon();
+                    });
+            }
+            initControl();
+            if (!!keyValue) {
+                common.ajax({
+                    url: "/SystemManage/ModuleButton/GetFormJson",
+                    dataType: "json",
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        // 回显已配置图标
+                        if (!!data.F_Icon) {
+                            iconPicker.checkIcon('iconPicker', data.F_Icon);
+                        }
+                        common.setReadOnly('adminform');
+                    }
+                });
+            }
+            // ★ 小计复选框悬停提示：layui 渲染后原生 input 被隐藏，需将提示词同步到自绘容器 div.layui-form-checkbox
+            var bindAuthorizeTips = function () {
+                var tips = $('#F_Authorize').data('tips');
+                if (tips) {
+                    $('#F_Authorize').next('.layui-form-select').attr('title', tips);
+                }
+            };
+            // form.render() 会重建渲染容器（页面多处调用），用 MutationObserver 监听父容器保证每次渲染后提示词仍然生效
+            new MutationObserver(bindAuthorizeTips).observe($('#F_Authorize').parent()[0], { childList: true, subtree: true });
+            bindAuthorizeTips();
+            form.render();
+
+            // ★ 根据 F_Location 动态控制 F_TableId 的验证和禁用状态
+            var toggleTableIdByLocation = function () {
+                var locationVal = $('#F_Location').val();
+                var $tableId = $('#F_TableId');
+                var $tableIdLabel = $tableId.closest('.layui-form-item').find('.layui-form-label');
+
+                if (locationVal === '3') {
+                    // F_Location = 3 (表单) 时：禁用 F_TableId，并设置为"请选择"（空值）
+                    $tableId.prop('disabled', true);
+                    $tableId.removeAttr('lay-verify');
+                    $tableIdLabel.removeClass('required');
+                    $tableId.val(''); // 设置为"请选择"
+                } else {
+                    // F_Location != 3 时：启用 F_TableId，添加必填验证
+                    $tableId.prop('disabled', false);
+                    $tableId.attr('lay-verify', 'required');
+                    $tableIdLabel.addClass('required');
+                }
+                form.render('select'); // 重新渲染 select 组件
+            };
+
+            // 监听 F_Location 变化
+            form.on('select(F_Location)', function (data) {
+                toggleTableIdByLocation();
+            });
+
+            // 初始化时也执行一次（编辑模式回填数据时）
+            toggleTableIdByLocation();
+        });
+        wcLoading.close();
+        function initControl() {
+            $("#F_ParentId").bindSelect({
+                url: "/SystemManage/ModuleButton/GetTreeSelectJson",
+                param: { moduleId: moduleId },
+            });
+            // 动态加载模块的视图/表格列表到 F_TableId 下拉框
+            if (!!moduleId) {
+                var tablelist = [];
+                common.ajax({
+                    url: '/SystemManage/Module/GetFormJson',
+                    dataType: 'json',
+                    data: { keyValue: moduleId },
+                    async: false,
+                    success: function (result) {
+                        if (result) {
+                            // 收集主表、主视图、其它对象、子对象
+                            if (result.F_MainTable) tablelist.push(result.F_MainTable);
+                            if (result.F_MainView) tablelist.push(result.F_MainView);
+                            if (result.F_TableId) {
+                                result.F_TableId.split(',').forEach(function (item) {
+                                    item = $.trim(item);
+                                    if (item && tablelist.indexOf(item) === -1) tablelist.push(item);
+                                });
+                            }
+                            if (result.F_SubObject) {
+                                result.F_SubObject.split(',').forEach(function (item) {
+                                    item = $.trim(item);
+                                    if (item && tablelist.indexOf(item) === -1) tablelist.push(item);
+                                });
+                            }
+                            if (result.F_TableName) {
+                                result.F_TableName.split(',').forEach(function (item) {
+                                    item = $.trim(item);
+                                    if (item && tablelist.indexOf(item) === -1) tablelist.push(item);
+                                });
+                            }
+                        }
+                    }
+                });
+                // 为每个表名获取描述并填充下拉框
+                $("#F_TableId").empty();
+                $("#F_TableId").append("<option value=''>==请选择==</option>");
+                $("#F_TableId").bindSelect({
+                    data: tablelist.map(function (item) {
+                        var tablename = "";
+                        common.ajax({
+                            url: '/SystemManage/ModuleFields/GetModuleTableListJson',
+                            dataType: 'json',
+                            data: { encode: item },
+                            async: false,
+                            success: function (result) {
+                                if (result[0].DbObjectKind == "Func" || result[0].DbObjectKind == "Proc")
+                                    tablename = result[0].Name;
+                                else
+                                    tablename = $.trim(result[0].Description);
+
+                                tablename = item.startsWith("view_") ? tablename + "视图"
+                                    : item.startsWith("func_") ? tablename + "函数"
+                                        : item.startsWith("proc_") ? tablename + "过程" : tablename + "表"
+                                tablename = tablename + "（" + result[0].Name + "）";
+                            }
+                        });
+                        return {
+                            id: item,
+                            text: tablename
+                        };
+                    }),
+                    search: true,
+                });
+            }
+        }
+        //select验证
+        form.verify({
+            required: function (value, item) {
+                var msg = "必填项不能为空";
+                value = $.trim(value);
+                var isEmpty = !value || value.length < 1;
+                // 当前验证元素是select且为空时,将页面定位至layui渲染的select处，或自定义想定位的位置
+                if (item.tagName == 'SELECT' && isEmpty) {
+                    $("html").animate({
+                        scrollTop: $(item).siblings(".layui-form-select").offset().top - 74
+                    }, 50);
+                }
+                if (isEmpty) {
+                    return msg;
+                }
+            }
+        });
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            if (!data.field.F_UrlAddress && !data.field.F_Authorize) {
+                common.modalMsg("请输入连接或者权限", "warning");
+                return false;
+            }
+            var postData = data.field;
+            if (!postData["F_EnabledMark"]) postData["F_EnabledMark"] = false;
+            if (!postData["F_Split"]) postData["F_Split"] = false;
+            if (!postData["F_IsPublic"]) postData["F_IsPublic"] = false;
+            postData["F_ModuleId"] = moduleId;
+            // F_Location=3 时 F_TableId 保持"请选择"（空值），无需补入
+
+            common.submitForm({
+                url: "/SystemManage/ModuleButton/SubmitForm?keyValue=" + keyValue,
+                param: postData,
+                success: function () {
+                    common.parentreload("data-search-btn");
+                }
+            })
+            return false;
+        });
+    });
+    // 清除图标：清空选择器面板与提交值，并收起面板
+    function clearIcon() {
+        layui.use(['iconPicker'], function () {
+            layui.iconPicker.checkIcon('iconPicker', "");
+            $("#F_Icon").val("");
+            $("#iconPicker").next(".layui-iconpicker").removeClass("layui-form-selected");
+        });
+    }
+</script>
+<style type="text/css">
+    .layui-iconpicker-icon i {
+        line-height: 26px !important;
+    }
+
+    .layui-iconpicker-item {
+        height: 26px !important;
+    }
+
+    .layui-iconpicker-search .layui-icon {
+        top: 7px !important;
+    }
+    .layui-iconpicker .layui-anim
+    {
+        width: 273px;
+    }
+</style>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">编号</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" maxlength="50" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_FullName" name="F_FullName" maxlength="50" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label">上级</label>
+                        <div class="layui-input-block">
+                            <select id="F_ParentId" name="F_ParentId" lay-search disabled>
+                                <option value="0" selected>父节点</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">位置</label>
+                        <div class="layui-input-block">
+                            <select id="F_Location" name="F_Location" lay-verify="required" lay-filter="F_Location">
+                                <option value="">==请选择==</option>
+                                <option value="1">初始固定</option>
+                                <option value="2">选中</option>
+                                <option value="3">表单</option>
+                                <option value="4">初始动态单选</option>
+                                <option value="5">初始动态多选</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">事件</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_JsEvent" name="F_JsEvent" maxlength="50" lay-verify="required"
+                                class="layui-input ">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">显示顺序</label>
+                        <div class="layui-input-block">
+                            <input type="number" pattern="[0-9]*" id="F_SortCode" name="F_SortCode"
+                                lay-verify="required|number" oninput="if(value.length>8)value=value.slice(0,8)"
+                                autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">权限</label>
+                        <div class="layui-input-block">
+                            @* <input type="text" id="F_Authorize" name="F_Authorize" maxlength="100"
+                                class="layui-input "> *@
+                            <select id="F_Authorize" name="F_Authorize" lay-verify="required"
+                                data-tips="私用仅创建用户可见，公用所有用户可见" lay-filter="F_Authorize">
+                                <option value="">==请选择==</option>
+                                <option value="0">私用</option>
+                                <option value="1">公用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">选项</label>
+                        <div class="layui-input-block">
+                            <input id="F_IsPublic" name="F_IsPublic" type="checkbox" value="true" title="公共">
+                            <input id="F_Split" name="F_Split" type="checkbox" value="true" title="分组">
+                            <input type="checkbox" name="F_EnabledMark" id="F_EnabledMark" checked="" value="true"
+                                title="有效">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">图标</label>
+                        <div class="layui-input-block">
+                            @* 实际提交值：layui 图标类名（如 layui-icon-add-1），兼容 fa fa-xxx / &#xNN; *@
+                            <input type="text" id="F_Icon" name="F_Icon" maxlength="50" class="layui-input layui-hide">
+                            <input type="text" id="iconPicker" lay-filter="iconPicker" class="layui-input layui-hide">
+                            @* 「清除图标」按钮由上方 iconPicker.render 的 success 回调插入面板搜索框（放大镜）后面 *@
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">样式</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Class" name="F_Class"
+                                placeholder="示例：layui-btn layui-btn-xs layui-btn-normal" maxlength="100"
+                                class="layui-input ">
+                        </div>
+                    </div>
+
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">连接</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_UrlAddress" name="F_UrlAddress" maxlength="50"
+                                class="layui-input ">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">绑定对象</label>
+                        <div class="layui-input-block">
+                            <select id="F_TableId" name="F_TableId" data-tips="按钮属于的视图或表格" lay-filter="F_TableId">
+                                <option value="">==请选择==</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">权限条件</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Condition" name="F_Condition" class="layui-textarea"
+                                placeholder="示例：(F_CreatorUserId == {loginUser} && {loginOrg} == 'xxxx-xxxx') || {loginRole} != 'xxxx-xxxx',行按钮需要加d."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">执行事件</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_JsEventCode" name="F_JsEventCode" class="layui-textarea"
+                                placeholder="示例：&#10;common.openNewTabByIframe({&#10;    title: '编辑订单'',&#10;    href: '/OrderManagement/Order/Form?keyValue=' +obj.data.F_Id,&#10;})"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">前置事件</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Before" name="F_Before" class="layui-textarea"
+                                placeholder="示例：&#10;BEGIN TRY&#10;   BEGIN TRANSACTION;&#10;   SELECT &#64;loginUser 登录人, &#64;loginRole 角色, &#64;loginOrg 部门, &#64;entity 数据模型, &#64;Id 数据id;&#10;   SET &#64;state = 1;&#10;   SET &#64;message = '成功';&#10;   COMMIT TRANSACTION;&#10;END TRY&#10;BEGIN CATCH&#10;   IF XACT_STATE() &lt;&gt; 0 ROLLBACK TRANSACTION;&#10;   SET &#64;state = 3;&#10;   SET &#64;message = '失败: ' + ERROR_MESSAGE();&#10;END CATCH"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">后置事件</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_After" name="F_After" class="layui-textarea" placeholder=""></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">消息参数</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_MsgParam" name="F_MsgParam" class="layui-textarea"
+                                placeholder="示例：&#10;SELECT &#10;  'oqzMJ6f6MnrYKMrP_1qIqWLft0XU' OpenID,&#10;  'http://ecp.cbgx.net/Home/Index#//PurchaseManage/Trial/Index?btnEvent=edit&amp;btnkeyValue= '+F_Id [url],&#10;  '测试订单通知' thing2,&#10;  '测试订单删除...' thing11,&#10;  '张三' thing13,&#10;  convert(varchar(20),F_CreatorTime,120) time4&#10;FROM crm_order&#10;WHERE F_Id='#F_Id#'"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Description" name="F_Description" class="layui-textarea"
+                                placeholder="请输入介绍"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>

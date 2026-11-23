@@ -1,0 +1,641 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<link href="~/js/lay-module/flow/WaterFlow.css" rel="stylesheet" />
+<link href="~/css/stepcss.css" rel="stylesheet" />
+<link href="~/js/lay-module/formDesigner/formPreview.css" rel="stylesheet" />
+<style>
+    .biz-form-preview {
+        padding: 8px 4px 4px;
+    }
+    .biz-form-preview .biz-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .biz-form-preview .biz-header .biz-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #333;
+    }
+    .biz-form-preview .biz-tag {
+        display: inline-block;
+        padding: 0 8px;
+        height: 22px;
+        line-height: 22px;
+        font-size: 12px;
+        border-radius: 2px;
+        background: #e8f3ff;
+        color: #1e9fff;
+    }
+    .biz-form-preview .biz-meta {
+        margin: 0 0 12px;
+        color: #666;
+        font-size: 13px;
+        line-height: 1.8;
+    }
+    .biz-form-preview .biz-meta code {
+        padding: 2px 6px;
+        background: #f6f6f6;
+        border-radius: 2px;
+        color: #c7254e;
+    }
+    .biz-form-preview iframe {
+        width: 100%;
+        height:calc(100vh - 310px);
+        border: 1px solid #eee;
+        border-radius: 4px;
+        background: #fff;
+    }
+</style>
+<script>
+    //只读参数
+    var readonly = true;
+    layui.use(['form', 'layer', 'element', 'jquery', 'table', 'waterflow', 'flowlayout', 'common', 'step', 'formPreview', 'xmSelect'], function () {
+        var form = layui.form,
+            element = layui.element,
+            layer = layui.layer,
+            $ = layui.jquery,
+            step = layui.step,
+            common = layui.common,
+            formPreview = layui.formPreview,
+            table = layui.table,
+            xmSelect = layui.xmSelect;
+
+        // 封装同步ajax请求
+        function syncAjax(url, data,type = 'GET') {
+            let result = null;
+            common.ajax({
+                url: url,
+                type: type,
+                data: data,
+                async: false,
+                success: res => { result = typeof res.data !== "undefined" ? res.data : res; }
+            });
+            return result;
+        }
+
+        var keyValue = $.request("keyValue");
+        var ItemId = $.request("ItemId");
+        var frmSelect;
+        var frmMeta = {}; // value -> { type, name, url }
+        var pendingFrmId = null;
+        var form_data ={};
+        //提交的URL
+        //权限字段
+        common.authorizeFields('stepForm');
+        var postData = {};//分步骤表单，最终提交只能获取最后一个表单的数据，所以定义全局数组保存表单数据
+        step.render({
+            elem: '#stepForm',
+            filter: 'stepForm',
+            width: '100%', //设置容器宽度
+            stepWidth: '750px',
+            height: 'auto',
+            stepItems: [{
+                title: '基本信息'
+            }, {
+                title: '选择表单'
+            }, {
+                title: '流程设计'
+            }]
+        });
+        $(function () {
+            $('#F_SchemeCode').val(new Date().getTime());
+            // 先加载编辑数据（同步），再初始化控件（异步），确保 F_OrganizeId 等值已就绪
+            if (!!keyValue) {
+                common.ajax({
+                    url: "/SystemManage/Flowscheme/GetFormJson",
+                    dataType: "json",
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        form_data = data;
+                        form.render();
+                        pendingFrmId = data.F_FrmId;
+                        flowDesignPanel.loadData(JSON.parse(data.F_SchemeContent));
+                    }
+                });
+            }
+            initControl();
+        });
+        wcLoading.close();
+        function initControl() {
+            // 暂存 bindSelect 异步加载前已设置的值，加载完成后回填
+            //var savedOrgId = $('#F_OrganizeId').val();
+            $("#F_OrganizeId").bindSelect({
+                url: "/SystemOrganize/Organize/GetTreeSelectJson",
+            });
+            // bindSelect 异步加载选项后，恢复之前设置的值并重新渲染
+            setTimeout(function () {
+                if (form_data.F_OrganizeId) {
+                    $('#F_OrganizeId').val(form_data.F_OrganizeId);
+                }
+                form.render('select');
+            }, 100);
+
+            // 部门切换时清空已选业务内容并重新加载模块列表（使用 layui 事件系统）
+            form.on('select(F_OrganizeId)', function (data) {
+                var hasValue = frmSelect && frmSelect.getValue('valueStr');
+                if (hasValue) {
+                    layer.confirm('切换部门将清空已选的业务内容，是否继续？', { icon: 3, title: '提示' }, function (index) {
+                        layer.close(index);
+                        $('#frmPreview').html('');
+                        $('#valueList').val('');
+                        buildFrmSelect();
+                    });
+                } else {
+                    $('#frmPreview').html('');
+                    $('#valueList').val('');
+                    buildFrmSelect();
+                }
+            });
+        }
+
+        // 分组选择框：动态表单、自定义表单、业务表单
+        var loadJson = function (url, pick) {
+            return new Promise(function (resolve) {
+                common.ajax({
+                    url: url,
+                    dataType: 'json',
+                    success: function (res) { resolve(pick ? pick(res) : (res || [])); },
+                    error: function () { resolve([]); }
+                });
+            });
+        };
+
+        function buildFrmSelect() {
+            Promise.all([
+                loadJson('/SystemManage/Form/GetListJson'),
+                loadJson('/SystemManage/Flowscheme/GetflowModules?F_OrganizeId=' + ($('#F_OrganizeId').val() || '') + '&keyValue=' + (keyValue || ''), function (res) { return (res && res.data) || []; })
+            ]).then(function (results) {
+                var groups = [
+                    { name: '动态表单', value: 'group0', disabled: true, children: [] },
+                    { name: '自定义表单', value: 'group1', disabled: true, children: [] },
+                    { name: '业务表单', value: 'group2', disabled: true, children: [] }
+                ];
+                frmMeta = {};
+                $.each(results[0], function (_, item) {
+                    if (item.F_FrmType == 0 || item.F_FrmType == 1) {
+                        groups[item.F_FrmType].children.push({ name: item.F_Name, value: item.F_Id, frmType: item.F_FrmType });
+                        frmMeta[item.F_Id] = { type: item.F_FrmType, name: item.F_Name };
+                    }
+                });
+                $.each(results[1] || [], function (_, item) {
+                    groups[2].children.push({
+                            name: item.F_FullName,
+                            value: item.F_Id,
+                            frmType: 2,
+                            url: item.form_address,
+                            urlAddress:item.index_address,
+                            disabled: !item.create_flag,
+                            create_flag:item.create_flag
+                    });
+                    frmMeta[item.F_Id] = {
+                        type: 2,
+                        name: item.F_FullName,
+                        url: item.form_address,
+                        urlAddress:item.index_address
+                    };
+                });
+
+                var filteredGroups = groups.filter(function (g) { return g.children.length > 0; });
+
+                if (frmSelect) {
+                    // 已存在则更新选项数据
+                    frmSelect.update({ data: filteredGroups });
+                } else {
+                    frmSelect = xmSelect.render({
+                        el: '#F_FrmId',
+                        name: 'F_FrmId',
+                        initValue: pendingFrmId ? [pendingFrmId] : undefined,
+                        size: 'mini',
+                        height:'500px',
+                        radio: true,
+                        clickClose: true,
+                        filterable: true,
+                        placeholder: '请选择',
+                        direction: 'auto',
+                        tree: { show: true, strict: false, expandedKeys: true },
+                        model: { label: { type: 'text' } },
+                        data: filteredGroups,
+                        on: function (data) {
+                            if (data.arr.length > 0) {
+                                changeForm(data.arr[0].value, data.arr[0]);
+                            } else {
+                                $('#frmPreview').html('');
+                                $('#valueList').val('');
+                            }
+                        }
+                    });
+                    // 编辑回填：两层兜底确保选中
+                    if (pendingFrmId) {
+                        var _pid = pendingFrmId;
+                        pendingFrmId = null;
+                        changeForm(_pid, null);
+                        setTimeout(function () { frmSelect.setValue([_pid]); }, 50);
+                        setTimeout(function () { frmSelect.setValue([_pid]); }, 400);
+                    }
+                }
+            });
+        }
+
+
+        // 渲染业务表单预览：展示名称、地址，并用 iframe 预览业务页面
+        var renderBizFormPreview = function (meta) {
+            var name = (meta && meta.name) || '';
+            var url = (meta && meta.url) || '';
+            var src = url;
+            if (src && src.indexOf('http') !== 0) {
+                // 相对路径补全为同源地址，便于 iframe 加载
+                if (src.charAt(0) !== '/') src = '/' + src;
+                src = document.location.origin + src;
+            }
+            var html = ''
+                + '<div class="biz-form-preview">'
+                + '  <div class="biz-header">'
+                + '    <span class="biz-tag">业务表单</span>'
+                + '    <span class="biz-title">' + (name || '未命名业务模块') + '</span>'
+                + '  </div>'
+                + '  <div class="biz-meta">'
+                + '    <div>流程将关联该业务模块。</div>'
+                + (url ? ('    <div>页面地址：<code>' + url + '</code></div>') : '    <div>暂无页面地址</div>')
+                + '  </div>'
+                + (src
+                    ? ('  <iframe id="previewIframe" src="' + src + (src.indexOf('?') > -1 ? '&' : '?') + 'isPreview=true" frameborder="0" scrolling="auto"></iframe>')
+               
+                    : '  <blockquote class="layui-elem-quote layui-quote-nm">该业务表单暂不支持预览</blockquote>')
+                + '</div>';
+            $('#frmPreview').html(html);
+            $('#valueList').val('');
+
+            var iframe = document.getElementById("previewIframe");
+            if (iframe) {
+                iframe.onload = function () {
+                    var doc = iframe.contentDocument || iframe.contentWindow.document;
+                    var $body = $(doc.body);
+                    // 添加蒙版禁止操作
+                    if (!$body.find('.preview-mask').length) {
+                        $body.append('<div class="preview-mask" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:transparent;"></div>');
+                    }
+                };
+        
+            }
+        };
+        var meta;
+        var changeForm = function (id, selectedItem) { //切换表单
+            if (!id) {
+                $('#frmPreview').html('');
+                $('#valueList').val('');
+                return;
+            }
+            if (frmSelect) {
+                frmSelect.setValue([id], false);
+            }
+            meta = frmMeta[id] || (selectedItem ? {
+                type: selectedItem.frmType,
+                name: selectedItem.name,
+                url: selectedItem.url,
+
+            } : null);
+
+            // 业务表单：不走 Form/GetFormJson，直接展示业务页信息 + iframe 预览
+            if (meta && meta.type == 2) {
+                postData.F_FrmType = 2;
+                renderBizFormPreview(meta);
+                form.render();
+                return;
+            }
+
+            common.ajax({
+                url: '/SystemManage/Form/GetFormJson',
+                dataType: 'json',
+                data: { keyValue: id },
+                async: false,
+                success: function (data) {
+                    // 若接口未命中（例如误把业务编码当表单Id），兜底按业务表单处理
+                    if (!data || data.F_Id == null) {
+                        postData.F_FrmType = 2;
+                        renderBizFormPreview(meta || { name: id, url: '' });
+                        return;
+                    }
+                    postData.F_FrmType = data.F_FrmType;
+                    if (data.F_FrmType == 0) {
+                        //表单设计器
+                        formPreview.render({
+                            data: JSON.parse(data.F_Content),
+                            elem: '#frmPreview',
+                            readonly: true
+                        });
+                    }
+                    else {
+                        $("#frmPreview").load(document.location.origin + '/form/' + data.F_WebId + '.html');
+                    }
+                    if (!!data.F_ContentData) {
+                        $("#valueList").val(data.F_ContentData);
+                    } else {
+                        $("#valueList").val('');
+                    }
+                },
+                error: function () {
+                    // 查询失败时，若能识别为业务表单则展示业务预览
+                    if (meta && meta.type == 2) {
+                        postData.F_FrmType = 2;
+                        renderBizFormPreview(meta);
+                    } else {
+                        $('#frmPreview').html('<blockquote class="layui-elem-quote layui-quote-nm">表单加载失败</blockquote>');
+                    }
+                }
+            });
+            form.render();
+        }
+
+
+        /*=========流程设计（begin）======================*/
+        var flowDesignPanel = $('#flowPanel').flowdesign({
+            height: 300,
+            widht: 300,
+            OpenNode: function (object) {
+                FlowDesignObject = object; //为NodeInfo窗口提供调用
+                valueList = $("#valueList").val().split(',');
+                if (object.type == 'start round mix' || object.type == 'end round') {
+                    layer.msg("开始节点与结束节点不能设置");
+                    return false;
+                }
+           
+                
+               //高度宽度超出就适应屏幕
+                var width = 800;
+                var height = 600;
+                var _width = document.body.clientWidth > width ? width + 'px' : document.body.clientWidth - 20 + 'px';
+                var _height = document.body.clientHeight > height ? height + 'px' : document.body.clientHeight - 20 + 'px';
+                top.layer.open({
+                    type: 2,
+                    area: [_width, _height], //宽高
+                    maxmin: true, //开启最大化最小化按钮
+                    title: '节点设置【' + object.name + '】',
+                    content: '/SystemManage/Flowscheme/NodeInfo',
+                    btn: ['确定', '取消'],
+                    success: function (layero, index) {
+                        //子界面定义一个窗口方法initForm，里面调用common.val给参数赋值
+                        if (layero.find('iframe')[0].contentWindow.initForm) {
+                            var data = {};
+                            data.FlowDesignObject = FlowDesignObject;
+                            data.valueList = valueList;
+                            data.postData = postData
+                            layero.find('iframe')[0].contentWindow.initForm(data);
+                        }
+                    },
+                    yes: function (index, layero) {
+                        if (layero.find('iframe')[0].contentWindow.initForm) {
+                            var iframeWin = layero.find('iframe')[0].contentWindow; //得到iframe页的窗口对象，执行iframe页的方法：iframeWin.method();
+                            var nodedata = iframeWin.getVal();
+                            flowDesignPanel.SetNodeEx(object.id, nodedata);
+                            top.layer.close(index);
+                        }
+                    },
+                    cancel: function (index) {
+                        layer.close(index);
+                    }
+                });
+            },
+            OpenLine: function (object) {
+                FlowDesignObject = object; //为NodeInfo窗口提供调用
+                valueList = $("#valueList").val().split(',');
+                //高度宽度超出就适应屏幕
+                var width = 800;
+                var height = 600;
+                var _width = document.body.clientWidth > width ? width + 'px' : document.body.clientWidth - 20 + 'px';
+                var _height = document.body.clientHeight > height ? height + 'px' : document.body.clientHeight - 20 + 'px';
+                top.layer.open({
+                    type: 2,
+                    area: [_width, _height], //宽高
+                    maxmin: true, //开启最大化最小化按钮
+                    title: '连线设置【' + object.name + '】',
+                    content: '/SystemManage/Flowscheme/LineInfo',
+                    btn: ['确定', '取消'],
+                    success: function (layero, index) {
+                        //子界面定义一个窗口方法initForm，里面调用common.val给参数赋值
+                        if (layero.find('iframe')[0].contentWindow.initForm) {
+                            var data = {};
+                            data.FlowDesignObject = FlowDesignObject;
+                            data.valueList = valueList;
+                            data.postData = postData;
+                            layero.find('iframe')[0].contentWindow.initForm(data);
+                        }
+                    },
+                    yes: function (index, layero) {
+                        if (layero.find('iframe')[0].contentWindow.initForm) {
+                            var iframeWin = layero.find('iframe')[0].contentWindow; //得到iframe页的窗口对象，执行iframe页的方法：iframeWin.method();
+                            var linedata = iframeWin.getVal();
+                            flowDesignPanel.SetLineEx(object.id, linedata);
+                            top.layer.close(index);
+                        }
+                    },
+                    cancel: function (index) {
+                        layer.close(index);
+                    }
+                });
+                return;
+            },
+            OpenArea: function (object) {
+                FlowDesignObject = object; //为NodeInfo窗口提供调用
+                //高度宽度超出就适应屏幕
+                var width = 800;
+                var height = 600;
+                var _width = document.body.clientWidth > width ? width + 'px' : document.body.clientWidth - 20 + 'px';
+                var _height = document.body.clientHeight > height ? height + 'px' : document.body.clientHeight - 20 + 'px';
+                top.layer.open({
+                    type: 2,
+                    area: [_width, _height], //宽高
+                    maxmin: true, //开启最大化最小化按钮
+                    title: '区域设置【' + object.name + '】',
+                    content: '/SystemManage/Flowscheme/AreaInfo',
+                    btn: ['确定', '取消'],
+                    success: function (layero, index) {
+                        //子界面定义一个窗口方法initForm，里面调用common.val给参数赋值
+                        if (layero.find('iframe')[0].contentWindow.initForm) {
+                            var data = {};
+                            data.FlowDesignObject = FlowDesignObject;
+                            data.valueList = valueList;
+                            layero.find('iframe')[0].contentWindow.initForm(data);
+                        }
+                    },
+                    yes: function (index, layero) {
+                        if (layero.find('iframe')[0].contentWindow.initForm) {
+                            var iframeWin = layero.find('iframe')[0].contentWindow; //得到iframe页的窗口对象，执行iframe页的方法：iframeWin.method();
+                            var areadata = iframeWin.getVal();
+                            flowDesignPanel.SetAreaEx(object.id, areadata);
+                            top.layer.close(index);
+                        }
+                    },
+                    cancel: function (index) {
+                        layer.close(index);
+                    }
+                });
+                return;
+            }
+        });
+
+        /*=========流程设计（end）=====================*/
+        $('.pre').click(function () {
+            step.pre('#stepForm');
+        });
+
+        $('.next').click(function () {
+            step.next('#stepForm');
+        });
+        form.on('submit(formStep)', function (data) {
+            postData = $.extend(postData, data.field);
+            step.next('#stepForm');
+            buildFrmSelect();
+            return false;
+        });
+
+        form.on('submit(formStep2)', function (data) {
+            var frmId = data.field.F_FrmId || (frmSelect && frmSelect.getValue('valueStr'));
+            if (!frmId) {
+                common.modalMsg("请选择表单", "warning");
+                return false;
+            }
+            data.field.F_FrmId = frmId;
+            postData = $.extend(postData, data.field);
+            step.next('#stepForm');
+            return false;
+        });
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var content = flowDesignPanel.exportDataEx();
+            if (content == -1) {
+                return false; //阻止表单跳转。
+            }
+            content.meta = meta;
+            var schemecontent = {
+                F_SchemeContent: JSON.stringify(content)
+            }
+       
+            if (!postData["F_EnabledMark"]) postData["F_EnabledMark"] = false;
+            $.extend(data.field, schemecontent);
+            $.extend(postData, data.field);
+            postData.F_AuthorizeType = 0;
+            var result = syncAjax('/SystemManage/Flowscheme/SubmitForm?keyValue=' + keyValue, postData,'POST')
+            if (result.state == 'success') {
+                common.modalMsg(result.message || "操作成功", "success");
+                common.reloadIframe("/SystemManage/Flowscheme/Index", 'data-search-btn');
+            }else{
+              common.modalMsg(result.message || "操作失败", "error");
+            }
+            return false;
+        });
+
+        flowDesignPanel.reinitSize($(window).width() - 50, $(window).height() - 100);
+        $(window).resize(function () {
+            flowDesignPanel.reinitSize($(window).width() - 50, $(window).height() - 100);
+        });
+    });
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-carousel" id="stepForm" lay-filter="stepForm">
+                    <div carousel-item>
+                        <div>
+                            <form class="layui-form layuimini-form">
+                                <div class="layui-form-item layui-hide">
+                                    <label class="layui-form-label required">流程编号</label>
+                                    <input type="text" name="valueList" id="valueList" class="layui-hide" hidden>
+                                    <div class="layui-input-block">
+                                        <input type="text" name="F_SchemeCode" id="F_SchemeCode" required lay-verify="required"
+                                               placeholder="流程编号" autocomplete="off" class="layui-input">
+                                    </div>
+                                </div>
+                                <div class="layui-form-item layui-hide">
+                                    <label class="layui-form-label required">流程名称</label>
+                                    <div class="layui-input-block">
+                                        <input type="text" name="F_SchemeName" id="F_SchemeName" required lay-verify="required"
+                                               placeholder="流程名称" autocomplete="off" class="layui-input">
+                                    </div>
+                                </div>
+                                 <div class="layui-form-item">
+                                    <label class="layui-form-label">归属部门</label>
+                                    <div class="layui-input-block">
+                                        <select id="F_OrganizeId" name="F_OrganizeId" lay-filter="F_OrganizeId" lay-search>
+                                            <option value="" selected>请选择</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-form-item layui-hide">
+                                    <label class="layui-form-label required">排序</label>
+                                    <div class="layui-input-block">
+                                        <input type="number" pattern="[0-9]*" id="F_SortCode" name="F_SortCode" lay-verify="required|number" oninput="if(value.length>8)value=value.slice(0,8)" autocomplete="off" class="layui-input">
+                                    </div>
+                                </div>
+                                <div class="layui-form-item layui-hide">
+                                    <label class="layui-form-label">选项</label>
+                                    <div class="layui-input-block">
+                                        <input type="checkbox" name="F_EnabledMark" id="F_EnabledMark" checked="" value="true" title="有效标识">
+                                    </div>
+                                </div>
+                                <div class="layui-form-item layui-form-text layui-hide">
+                                    <label class="layui-form-label">备注</label>
+                                    <div class="layui-input-block">
+                                        <textarea id="F_Description" name="F_Description" class="layui-textarea" placeholder="请输入备注"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-group-bottom text-right">
+                                    <div class="layui-input-block">
+                                        <button class="layui-btn" lay-submit lay-filter="formStep">
+                                            &emsp;下一步&emsp;
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div>
+                            <form class="layui-form layuimini-form">
+                                <div class="layui-form-item">
+                                    <div id="F_FrmId" class="xm-select-demo"></div>
+                                </div>
+                                <div class="layui-form-item">
+                                    <fieldset class="layui-elem-field" style="padding-top:15px;">
+                                        <div id="frmPreview"></div>
+                                    </fieldset>
+                                </div>
+                                <div class="form-group-bottom text-right">
+                                    <div class="layui-input-block">
+                                        <button type="button" class="layui-btn layui-btn-primary pre">上一步</button>
+                                        <button class="layui-btn" lay-submit lay-filter="formStep2">
+                                            &emsp;下一步&emsp;
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div>
+                            <form class="layui-form layuimini-form">
+                                <div class="layui-form-item">
+                                    <div id="flowPanel" style=""></div>
+                                </div>
+                                <div class="form-group-bottom text-right">
+                                    <div class="layui-input-block">
+                                        <button type="button" class="layui-btn layui-btn-primary pre">上一步</button>
+                                        <button class="layui-btn site-demo-active" lay-submit lay-filter="saveBtn">
+                                            &emsp;保存&emsp;
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

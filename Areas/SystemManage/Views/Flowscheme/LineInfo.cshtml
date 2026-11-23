@@ -1,0 +1,381 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<div class="layui-input-item layui-hide" id="divInputTemplate" style="display:flex;align-items: center">
+    <label class="layui-form-label required">条件规则</label>
+    <div class="layui-input-inline" style="width:100px;margin-right:5px">
+        <select id="ComparesCondition" name="ComparesCondition" lay-verify="required" lay-search>
+            <option value="and" selected>并且</option>
+            <option value="or">或者</option>
+        </select>
+    </div>
+    <div class="layui-input-inline" style="width:150px;margin-right:5px">
+        <div id="ComparesFieldName"></div>
+    </div>
+    <div class="layui-input-inline" style="width:100px;margin-right:5px">
+        <select id="ComparesOperation" name="ComparesOperation" lay-verify="required" lay-search>
+                <option value="" selected>请选择</option>
+                <option value=">">大于</option>
+                <option value=">=">大于等于</option>
+                <option value="<">小于</option>
+                <option value="<=">小于等于</option>
+                <option value="=">等于</option>
+                <option value="!=">不等于</option>
+                <option value="in">属于</option>
+                <option value="not in">不属于</option>
+           
+        </select>
+    </div>
+    <div class="layui-input-inline compare-value" style="flex: 1;margin-right:5px">
+        <div class="compare-host"></div>
+        <input type="hidden" id="ComparesValue" name="ComparesValue" lay-verify="required">
+    </div>
+    <button class="layui-btn layui-btn-danger" style="height:25px;line-height:25px" onclick="deleteRule('divInputTemplate')"><i class="layui-icon">&#xe67e;</i></button>
+</div>
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <div class="layui-form layuimini-form" lay-filter="adminform">
+            <div class="layui-form-item">
+                <label class="layui-form-label">连线标识</label>
+                <div class="layui-input-block">
+                    <input type="text" name="LineCode" id="LineCode" readonly lay-verify="required"
+                           placeholder="连线编号" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">连线名称</label>
+                <div class="layui-input-block">
+                    <input type="text" name="LineName" id="LineName" required lay-verify="required"
+                           placeholder="连线名称" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">源节点</label>
+                <div class="layui-input-block">
+                    <input type="text" name="NodeForm" id="NodeForm" readonly lay-verify="required"
+                           class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">目标节点</label>
+                <div class="layui-input-block">
+                    <input type="text" name="NodeTo" id="NodeTo" readonly lay-verify="required"
+                           class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">连线条件</label>
+                <div class="layui-input-block" style="padding-right: 70px;">
+                    <button id="NF-add" class="layui-btn"><i class="layui-icon">&#xe654;</i></button>
+                </div>
+            </div>
+            <div id="ruledata" style="display: flex;flex-direction: column;gap: 10px;">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    var FlowDesignObject, valueList, postData, fieldSelects = {};
+    function initForm(data) {
+        FlowDesignObject = data.FlowDesignObject;
+        valueList = data.valueList;
+        postData = data.postData;
+    }
+    layui.use(['form', 'layer', 'element', 'jquery', 'common', 'controls', 'optimizeSelectOption', 'xmSelect', 'laydate', 'tableSelect'], function () {
+        var layer = layui.layer,
+            $ = layui.jquery,
+            common = layui.common,
+            controls = layui.controls,
+            xmSelect = layui.xmSelect,
+            laydate = layui.laydate,
+            tableSelect = layui.tableSelect;
+        var form = layui.form;
+        var Method = $.request("Method");
+        //从flowschemes.js进入的节点信息
+        var line = FlowDesignObject;
+        var valuelist = valueList || [];
+        var fieldData = [];
+        var fieldMap = {};
+        function getFieldEditType(json, item) {
+            return controls.fieldControl.type(json, item, { scene: 'table' });
+        }
+        function appendFieldOption(value, fullName, raw) {
+            if (value == null || $.trim(value) === '') return;
+            var item = { name: value, value: value, editType: 'input', template: {}, referType: 0 };
+            if (fullName) item.fullName = fullName;
+            if (value === '申请人' || value === '所属部门') {
+                item.editType = 'input';
+                item.openModal = true;
+            } else if (raw) {
+                var tpl = raw.F_Template;
+                if (typeof tpl === 'string') {
+                    try { tpl = JSON.parse(tpl); } catch (e) { tpl = {}; }
+                }
+                item.template = tpl || {};
+                item.referType = raw.F_ReferType;
+                item.editType = getFieldEditType(item.template, raw);
+                var dt = item.template.datatype;
+                item.dateType = dt === 'datetime' || dt === 'datetime2' ? 'datetime' : (dt === 'time' || dt === 'year' || dt === 'month' ? dt : 'date');
+            }
+            fieldData.push(item);
+            fieldMap[value] = item;
+        }
+        appendFieldOption('申请人');
+        appendFieldOption('所属部门');
+        var frmType = postData && postData.F_FrmType;
+        var frmId = postData && postData.F_FrmId;
+        if (frmType == 2 && frmId) {
+            common.ajax({
+                url: '/SystemManage/Flowscheme/GetModuleButtonsFieldsJson',
+                dataType: 'json',
+                data: { keyValue: frmId },
+                type: 'GET',
+                async: false,
+                success: function (res) {
+                    ((res && res.fields) || []).forEach(function (item) {
+                        if (!item || !item.F_EnCode) return;
+                        appendFieldOption(item.F_EnCode, item.F_FullName, item);
+                    });
+                }
+            });
+        } else {
+            for (var i = 0; i < valuelist.length; i++) {
+                appendFieldOption(valuelist[i]);
+            }
+        }
+        var tmp = {
+            LineName: line.name,
+            LineCode: line.id,//默认的code
+            NodeForm: line.from,
+            NodeTo: line.to,
+            ComparesOperation0: "",
+            ComparesFieldName0: "",
+            ComparesValue0: "",
+            ComparesName0: "",
+            ComparesCondition0: "and",
+        };
+        var cout = 0;
+        var skipValueReset = false;
+        function applyValueEditor(index, saved, code) {
+            if (!$('#divInput' + index).length) return;
+            if (code == null) code = fieldSelects[index] ? fieldSelects[index].getValue('valueStr') : '';
+            var meta = fieldMap[code] || { editType: 'input', value: code, fullName: '', template: {}, referType: 0 };
+            var $host = $('#divInput' + index).find('.compare-host');
+            var $value = $('#ComparesValue' + index);
+            var nameVal = saved ? (saved.name || '') : '';
+            var valueVal = saved ? (saved.value || '') : '';
+            var kind = meta.editType || 'input';
+            var isDate = kind === 'date';
+            var openModal = !!meta.openModal;
+            $value.siblings('#ComparesName' + index).remove();
+            if (!openModal) $value.after($('<input type="hidden" id="ComparesName' + index + '">'));
+            var editorCfg = {};
+            if (openModal) {
+                editorCfg.id = 'ComparesName' + index;
+                editorCfg.readonly = true;
+                editorCfg.placeholder = '请选择';
+                editorCfg.inputStyle = { cursor: 'pointer' };
+                editorCfg.on = { click: function () { if (!editorCfg.disabled) search(index); } };
+            }
+            if (Method == 'Details') editorCfg.disabled = true;
+            if (isDate) editorCfg.dateType = meta.dateType || 'date';
+            controls.fieldControl.render({
+                elem: $host,
+                type: kind,
+                template: meta.template,
+                field: { F_EnCode: meta.value, F_FullName: meta.fullName, F_ReferType: meta.referType },
+                value: (kind === 'tableSelect' || kind === 'select') ? valueVal : (nameVal || valueVal),
+                config: editorCfg,
+                onChange: function (value, display) {
+                    $value.val(value == null ? '' : value);
+                    var $name = $('#ComparesName' + index);
+                    if ($name.length && !openModal) $name.val(display == null ? '' : display);
+                }
+            });
+            var ctrl = $host.data('fieldControl');
+            if (ctrl && nameVal && (kind === 'tableSelect' || openModal)) ctrl.setValue(valueVal || nameVal, nameVal);
+            if (openModal) $value.val(valueVal || '');
+            else if (ctrl) {
+                var current = ctrl.getValue();
+                $value.val(current == null || current === '' ? (valueVal || '') : current);
+                var shown = (kind === 'select' && ctrl.instance && ctrl.instance.getValue) ? (ctrl.instance.getValue('nameStr') || '') : '';
+                $('#ComparesName' + index).val(shown || nameVal || valueVal || '');
+            }
+        }
+        function renderFieldSelect(index) {
+            fieldSelects[index] = xmSelect.render({
+                el: '#ComparesFieldName' + index,
+                name: 'ComparesFieldName' + index,
+                layVerify: 'required',
+                layVerType: 'msg',
+                radio: true,
+                clickClose: true,
+                filterable: true,
+                size: 'mini',
+                disabled: Method == 'Details',
+                tips: '请选择',
+                model: { type: 'fixed', icon: 'hidden', label: { type: 'text' } },
+                data: fieldData,
+                template: function (obj) {
+                    var item = obj.item;
+                    return item.fullName ? item.name + '（' + item.fullName + '）' : item.name;
+                },
+                filterMethod: function (val, item) {
+                    if (!val) return true;
+                    return (item.name + (item.fullName || '')).indexOf(val) > -1;
+                },
+                on: function (data) {
+                    if (skipValueReset) return;
+                    var picked = (data.arr && data.arr[0] && data.arr[0].value) || '';
+                    applyValueEditor(index, null, picked);
+                }
+            });
+        }
+        $(document).on('click', '#NF-add', function () {
+            var target = $('#ruledata');
+            var index = cout;
+            var html = $("#divInputTemplate").prop("outerHTML");
+            html = html.replace(/ComparesFieldName/g, "ComparesFieldName" + index); // 替换多个
+            html = html.replace(/条件规则/g, "条件规则" + (cout + 1)); // 替换多个
+            html = html.replace(/ComparesOperation/g, "ComparesOperation" + cout); // 替换多个
+            html = html.replace(/ComparesValue/g, "ComparesValue" + cout); // 替换多个
+            html = html.replace(/ComparesName/g, "ComparesName" + cout); // 替换多个
+            html = html.replace(/ComparesCondition/g, "ComparesCondition" + cout); // 替换多个
+            html = html.replace(/divInputTemplate/g, "divInput" + cout);
+            html = html.replace(/searchCout/g, cout);
+            var obj = $(html);
+            obj.removeClass("layui-hide");
+            obj.appendTo(target);
+            renderFieldSelect(index);
+            applyValueEditor(index);
+            cout++;
+            form.render();
+        });
+        //初始化节点设置信息
+        if (!!line.Compares) {
+            for (var i = 0; i < line.Compares.length; i++) {
+                $('#NF-add').click();
+                tmp['ComparesOperation' + i] = line.Compares[i].Operation;
+                tmp['ComparesFieldName' + i] = line.Compares[i].FieldName;
+                tmp['ComparesValue' + i] = line.Compares[i].Value;
+                tmp['ComparesName' + i] = line.Compares[i].Name;
+                tmp['ComparesCondition' + i] = line.Compares[i].Condition;
+            }
+        }
+        else {
+            if (Method != "Details") {
+                $('#NF-add').click();
+            }
+        }
+        if (Method == "Details") {
+            var readForm = layui.$('[lay-filter="adminform"]');
+            readForm.find('button').prop('disabled', true);
+            common.setReadOnly('adminform');
+        }
+        common.val('adminform', tmp);
+        for (var n = 0; n < cout; n++) {
+            var code = tmp['ComparesFieldName' + n];
+            if (code && fieldSelects[n]) {
+                skipValueReset = true;
+                fieldSelects[n].setValue([code], null, true);
+                skipValueReset = false;
+            }
+            if ($('#divInput' + n).length) {
+                applyValueEditor(n, { name: tmp['ComparesName' + n], value: tmp['ComparesValue' + n] });
+            }
+        }
+        form.render(); //重新渲染，防止radio/select等失效
+        wcLoading.close();
+        //select验证
+        form.verify({
+            required: function (value, item) {
+                var msg = "必填项不能为空";
+                value = $.trim(value);
+                var isEmpty = !value || value.length < 1;
+                // 当前验证元素是select且为空时,将页面定位至layui渲染的select处，或自定义想定位的位置
+                if (item.tagName == 'SELECT' && isEmpty) {
+                    $("html").animate({
+                        scrollTop: $(item).siblings(".layui-form-select").offset().top - 74
+                    }, 50);
+                }
+                if (isEmpty) {
+                    return msg;
+                }
+            }
+        });
+        //提供给上父页面调用
+        getVal = function () {
+            tmp.LineName = $('#LineName').val();
+            var result = {
+                LineName: tmp.LineName,
+                LineCode: tmp.LineCode,
+                Compares: [],
+            };
+            for (var i = 0; i < cout; i++) {
+                var FieldName = fieldSelects[i] && $('#divInput' + i).length ? fieldSelects[i].getValue('valueStr') : '';
+                if (!FieldName) {
+                    continue;
+                }
+                var Operation = $('#ComparesOperation' + i).val();
+                var Value = $('#ComparesValue' + i).val();
+                var Name = $('#ComparesName' + i).val();
+                var Condition = $('#ComparesCondition' + i).val();
+                if (!Value) {
+                    Value = Name;
+                }
+                var temp = { //节点指定操作人
+                    FieldName: FieldName,
+                    Operation: Operation,
+                    Value: Value,
+                    Name: Name,
+                    Condition: Condition,
+                };
+                result.Compares.push(temp);
+            }
+            return result;
+        }
+    })
+    function deleteRule(data) {
+        var obj = document.getElementById(data);//建议使用ID
+        if (obj != null) {
+            obj.parentNode.removeChild(obj);
+        }
+        layui.use(['jquery', 'form'], function () {
+            layui.form.render();
+        });
+    }
+    function search(data) {
+        var fields = fieldSelects[data] ? fieldSelects[data].getValue('valueStr') : '';
+        if (fields != '申请人' && fields != '所属部门') {
+            return false;
+        }
+        $('#ComparesName' + data).val(null);
+        $('#ComparesValue' + data).val(null);
+        layui.use(['jquery', 'form', 'common'], function () {
+            var form = layui.form,
+                $ = layui.$,
+                common = layui.common;
+            //不同弹窗
+            if (fields == '申请人') {
+                common.modalOpen({
+                    title: "选择用户",
+                    url: "/SystemOrganize/User/AddForm?name=" + "ComparesName" + data + "&value=" + "ComparesValue" + data,
+                    width: "800px",
+                    height: "600px",
+                });
+            }
+            else if (fields == '所属部门') {
+                common.modalOpen({
+                    title: "选择组织",
+                    url: "/SystemOrganize/Organize/AddForm?name=" + "ComparesName" + data + "&value=" + "ComparesValue" + data,
+                    width: "800px",
+                    height: "600px",
+                });
+            }
+            else {
+                return false;
+            }
+        });
+    }
+</script>

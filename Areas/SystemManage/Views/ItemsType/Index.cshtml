@@ -1,0 +1,172 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Index.cshtml";
+}
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <fieldset class="table-search-fieldset layui-hide" id="searchField">
+            <div>
+                <form class="layui-form layui-form-pane" action="">
+                    <div class="layui-form-item">
+                        <div class="layui-inline">
+                            <label class="layui-form-label">关键字:</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off" class="layui-input" placeholder="">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <button type="submit" class="layui-btn layui-btn-primary" lay-submit lay-filter="data-search-btn"><i class="layui-icon">&#xe615;</i> 搜 索</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </fieldset>
+
+        <script type="text/html" id="toolbarDemo">
+            <div class="layui-btn-container" id="toolbar">
+                <button id="NF-add" name="NF-add" authorize class="layui-btn layui-btn-sm" lay-event="add"><i class="layui-icon">&#xe654;</i>新增</button>
+                <button id="NF-edit" name="NF-edit" authorize class="layui-btn layui-btn-sm layui-btn-warm layui-hide" lay-event="edit"><i class="layui-icon">&#xe642;</i>修改</button>
+                <button id="NF-delete" name="NF-delete" authorize class="layui-btn layui-btn-sm layui-btn-danger layui-hide" lay-event="delete"> <i class="layui-icon">&#xe640;</i>删除</button>
+                <button id="NF-details" name="NF-details" authorize class="layui-btn layui-btn-sm layui-btn-normal layui-hide" lay-event="details"> <i class="layui-icon">&#xe60b;</i>查看</button>
+            </div>
+        </script>
+        <script type="text/html" id="currentTableBar">
+            <a id="NF-edit" authorize class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">修改</a>
+            <a id="NF-delete" authorize class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">删除</a>
+            <a id="NF-details" authorize class="layui-btn layui-btn-xs layui-btn-normal" lay-event="details">查看</a>
+        </script>
+        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+    </div>
+</div>
+<script>
+    layui.use(['jquery', 'form', 'commonTable', 'common', 'optimizeSelectOption'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            commonTable = layui.commonTable,
+            common = layui.common;
+
+        currentTableBar.innerHTML = common.authorizeButtonNew(currentTableBar.innerHTML);
+        toolbarDemo.innerHTML = common.authorizeButtonNew(toolbarDemo.innerHTML);
+
+        function checkedRow() {
+            var data = (layui.treeTable.checkStatus('currentTableId') || {}).data || [];
+            return { data: data, keyValue: data.length > 0 ? data[0].F_Id : null, row: data.length > 0 ? data[0] : null };
+        }
+
+        var options = {
+            elem: '#currentTableId',
+            id: 'currentTableId',
+            url: '/SystemManage/ItemsType/GetGridJson',
+            autoButtons: false,
+            cols: [[
+                { type: 'radio', width: 50, fixed: 'left' },
+                { field: 'F_FullName', title: '名称', width: 200 },
+                { field: 'F_EnCode', title: '编号', width: 120 },
+                { field: 'F_SortCode', title: '排序', width: 60 },
+                {
+                    field: 'F_EnabledMark', title: '状态', width: 80,
+                    templet: function (d) {
+                        return d.F_EnabledMark == true
+                            ? "<span class='layui-btn layui-btn-normal layui-btn-xs'>有效</span>"
+                            : "<span class='layui-btn layui-btn-warm layui-btn-xs'>无效</span>";
+                    }
+                },
+                {
+                    field: 'F_CreatorTime', title: '创建时间', width: 120,
+                    templet: function (d) {
+                        if (d.F_CreatorTime) return new Date(d.F_CreatorTime).Format('yyyy-MM-dd');
+                        return '';
+                    }
+                },
+                { field: 'F_Description', title: '备注', minWidth: 150 },
+                { title: '操作', width: 160, toolbar: '#currentTableBar', align: 'center', fixed: 'right' }
+            ]],
+            tree: {
+                customName: { id: 'F_Id', pid: 'F_ParentId', name: 'F_FullName' },
+                data: { isSimpleData: true, rootPid: '0' },
+                view: {
+                    expandAllDefault: true
+                }
+            },
+            oneBtnList: ['NF-edit', 'NF-details', 'NF-delete'],
+            user: {
+                id: '@ViewData["CurrentUserId"]',
+                role: '@ViewData["CurrentRoleId"]',
+                org: '@ViewData["CurrentDeptId"]'
+            },
+            onToolbar: function (obj) {
+                var sel = checkedRow();
+                if (obj.event === 'add') {
+                    common.modalOpen({
+                        title: '添加分类',
+                        url: '/SystemManage/ItemsType/Form?event=add&keyValue=' + (sel.keyValue || ''),
+                        width: '450px', height: '380px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'delete') {
+                    if (!sel.row) { common.modalMsg('未选中数据', 'warning'); return false; }
+                    common.deleteForm({
+                        url: '/SystemManage/ItemsType/DeleteForm',
+                        param: { keyValue: sel.keyValue },
+                        success: function () { common.reload('data-search-btn'); }
+                    });
+                    return false;
+                }
+                if (obj.event === 'edit') {
+                    if (!sel.row) { common.modalMsg('未选中数据', 'warning'); return false; }
+                    common.modalOpen({
+                        title: '编辑分类',
+                        url: '/SystemManage/ItemsType/Form?event=edit&keyValue=' + sel.keyValue,
+                        width: '450px', height: '380px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'details') {
+                    if (!sel.row) { common.modalMsg('未选中数据', 'warning'); return false; }
+                    common.modalOpen({
+                        title: '查看分类',
+                        url: '/SystemManage/ItemsType/Details?keyValue=' + sel.keyValue,
+                        width: '450px', height: '380px', btn: []
+                    });
+                    return false;
+                }
+            },
+            onEditTool: function (obj) {
+                if (obj.event === 'delete') {
+                    common.deleteForm({
+                        url: '/SystemManage/ItemsType/DeleteForm',
+                        param: { keyValue: obj.data.F_Id },
+                        success: function () { obj.del(); }
+                    });
+                    return false;
+                }
+                if (obj.event === 'edit') {
+                    common.modalOpen({
+                        title: '编辑界面',
+                        url: '/SystemManage/ItemsType/Form?event=edit&keyValue=' + obj.data.F_Id,
+                        width: '500px', height: '500px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'details') {
+                    common.modalOpen({
+                        title: '查看界面',
+                        url: '/SystemManage/ItemsType/Details?keyValue=' + obj.data.F_Id,
+                        width: '500px', height: '500px', btn: []
+                    });
+                    return false;
+                }
+            }
+        };
+        commonTable.createtreetable(options);
+
+        form.on('submit(data-search-btn)', function (data) {
+            options.where = $.extend({}, options.where || {}, { keyword: data.field.txt_keyword || '' });
+            commonTable.reloadtreetable(options);
+            return false;
+        });
+
+        wcLoading.close();
+    });
+</script>

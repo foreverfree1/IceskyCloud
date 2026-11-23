@@ -1,0 +1,354 @@
+﻿@{
+ViewBag.Title = "Index";
+Layout = "~/Views/Shared/_Index.cshtml";
+}
+<style>
+    body {
+        padding: 0;
+        margin: 0;
+    }
+
+    /* 跨行合并后需要隐藏的重复单元格：
+       不要复用 layui-hide，避免复位时误删 layui 自身的隐藏类 */
+    .soul-merge-hide {
+        display: none !important;
+    }
+</style>
+<script>
+    layui.use(['jquery', 'form', 'table', 'common', 'commonTable', 'optimizeSelectOption'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            common = layui.common;
+        //加载数据
+        wcLoading.close();
+        //权限控制(js是值传递)
+        currentTableBar.innerHTML = common.authorizeTabButton(currentTableBar.innerHTML);
+        toolbarDemo.innerHTML = common.authorizeTabButton(toolbarDemo.innerHTML);
+        var moduleId = $.request("moduleId");
+        var modulename = $.request("modulename");
+        if (!!modulename) {
+            try {
+                $('#txt_name').val(decodeURI(escape(modulename)));
+            } catch (e) {
+                $('#txt_name').val(decodeURI(modulename));
+            }
+        }
+        var rowdata = JSON.parse(sessionStorage.getItem('historymoduledata') || '');
+
+        /* ============== 「绑定对象」(F_TableId) 分组排序 + 跨行合并 ==============
+           分组顺序：1 表单('') → 2 主视图/主表 → 3 子表/子视图/其它对象
+           组内按去掉 view_ 前缀后的名称长度升序（短的在前），等长按名称 */
+        var MAIN_OBJECTS = []; // [0]=主视图, [1]=主表
+        // 同步取当前模块的主视图/主表（失败仅影响分组）
+        common.ajax({
+            url: '/SystemManage/Module/GetFormJson',
+            dataType: 'json',
+            data: { keyValue: moduleId },
+            type: 'GET',
+            async: false,
+            success: function (m) {
+                if (!m) return;
+                var mainTable = $.trim(m.F_MainTable || '');
+                var mainView = $.trim(m.F_MainView || '') || (mainTable ? 'view_' + mainTable : '');
+                MAIN_OBJECTS = [mainView, mainTable].filter(Boolean);
+            }
+        });
+
+        function objText(v) { return $.trim(v || '') || 'Form'; }            // 空值即表单按钮
+        function objKey(v) { return $.trim(v || '').replace(/^view_/i, ''); } // 去掉 view_ 前缀用于长度排序
+        function objRank(v) {
+            var n = $.trim(v || '');
+            if (!n) return 0;              // 表单
+            var i = MAIN_OBJECTS.indexOf(n);
+            return i < 0 ? 99 : i + 1;     // 主视图=1、主表=2，其余=99
+        }
+        // 排序：表单 → 主视图 → 主表 → 子表/子视图/其它对象（长度从短到长）
+        function sortObjectRows(rows) {
+            if (!Array.isArray(rows)) return rows;
+            rows.sort(function (a, b) {
+                var ra = objRank(a.F_TableId), rb = objRank(b.F_TableId);
+                if (ra !== rb) return ra - rb;
+                var ka = objKey(a.F_TableId), kb = objKey(b.F_TableId);
+                return ka.length - kb.length || (ka < kb ? -1 : (ka > kb ? 1 : 0));
+            });
+            return rows;
+        }
+        // F_TableId 跨行合并：同值连续行只在首行保留单元格并设 rowspan，其余仅隐藏（保留 DOM 避免列错位）
+        function mergeObjectCells() {
+            var $view = $('#currentTableId').next('.layui-table-view');
+            if (!$view.length) return;
+            var $tds = $view.find('.layui-table-body td[data-field="F_TableId"]');
+            if (!$tds.length) return;
+            // 幂等复位：先清掉上一次合并留下的 rowspan/隐藏状态（行数变化后必须重算，否则错位）
+            $tds.removeAttr('rowspan').removeClass('soul-merge-hide');
+            if ($tds.length < 2) return;
+            var $master = $tds.eq(0), text = $.trim($master.text());
+            $tds.slice(1).each(function () {
+                var $td = $(this), curr = $.trim($td.text());
+                if (curr === text) {
+                    $master.attr('rowspan', (parseInt($master.attr('rowspan')) || 1) + 1);
+                    $td.addClass('soul-merge-hide');
+                } else {
+                    $master = $td;
+                    text = curr;
+                }
+            });
+        }
+
+        commonTable.rendertable({
+            elem: '#currentTableId',
+            id: 'currentTableId',
+            url: "/SystemManage/ModuleButton/GetTreeGridJson?moduleId=" + moduleId,
+            height: 'full-22',
+            // 数据到达即分组排序（搜索/翻页重载同样生效）
+            parseData: function (res) {
+                res = res || {};
+                sortObjectRows(res.data);
+                return { code: res.state, msg: res.message, count: res.count, data: res.data };
+            },
+            done: function () {
+                mergeObjectCells();
+            },
+            cols: [[
+                { type: "radio", width: 50, fixed: 'left' },
+                {
+                    field: 'F_TableId', title: '绑定对象', width: 'auto',
+                    templet: function (d) { return objText(d.F_TableId); }
+                },
+                { field: 'F_EnCode', title: '编号', width: 'auto', filter: true },
+                { field: 'F_FullName', title: '名称', width: 'auto', filter: true },
+                {
+                    field: 'F_Location', title: '位置', width: 'auto',
+                    templet: function (d) {
+                        if (d.F_Location == 1) {
+                            return "初始固定";
+                        } else if (d.F_Location == 2) {
+                            return "选中";
+                        } else if (d.F_Location == 3) {
+                            return "表单";
+                        } else if(d.F_Location == 4){
+                             return "初始动态单选";
+                        }else{
+                             return "初始动态多选";
+                        }
+                    }
+                },
+                { field: 'F_JsEvent', title: '事件', width: 'auto' },
+                { field: 'F_UrlAddress', title: '连接', width: 'auto' },
+                {
+                    field: 'F_Authorize', title: '权限', width: 'auto',
+                    templet: function (d) {
+                        if (d.F_Authorize == "0") {
+                            return "私用"
+                        } else if (d.F_Authorize == "1") {
+                            return "公用"
+                        }
+                        else {
+                            return d.F_Authorize
+                        }
+                    }
+                },
+                {
+                    field: 'F_IsPublic', title: '公共', width: 'auto',
+                    templet: function (d) {
+                        if (d.F_IsPublic == true) {
+                            return "<span class='layui-btn layui-btn-normal layui-btn-xs'>是</span>";
+                        } else {
+                            return "<span class='layui-btn layui-btn-warm layui-btn-xs'>否</span>";
+                        }
+                    }
+                },
+                {
+                    field: 'F_EnabledMark', title: '状态', width: 'auto',
+                    templet: function (d) {
+                        if (d.F_EnabledMark == true) {
+                            return "<span class='layui-btn layui-btn-normal layui-btn-xs'>有效</span>";
+                        } else {
+                            return "<span class='layui-btn layui-btn-warm layui-btn-xs'>无效</span>";
+                        }
+                    }
+                },
+                { field: 'F_CreatorTime', title: '创建时间', width: 'auto', sort: true },
+                { field: 'F_SortCode', title: '排序', width: 'auto' },
+                { field: 'F_Description', title: '备注', minWidth: 'auto' },
+                { title: '操作', width: 'auto', toolbar: '#currentTableBar', align: "center", fixed: 'right' }
+            ]]
+        });
+        // 监听搜索操作
+        form.on('submit(data-search-btn)', function (data) {
+            //执行搜索重载
+            commonTable.reloadtable({
+                elem: 'currentTableId',
+                curr: 1, 
+                where: { keyword: data.field.txt_keyword }
+            });
+            module = null;
+            return false;
+        });
+        //行点击事件监听，控制按钮显示
+        var oneList = ["NF-edit", "NF-delete", "NF-details"];//选择1条显示
+        commonTable.tableRowClick("radio", "currentTableFilter", "currentTableId", oneList);
+        /**
+         * toolbar监听事件
+         */
+        table.on('toolbar(currentTableFilter)', function (obj) {
+            var data = table.checkStatus('currentTableId').data;
+            if (obj.event === 'add') {  // 监听操作
+                common.modalOpen({
+                    title: "添加按钮",
+                    url: "/SystemManage/ModuleButton/Form?moduleId=" + moduleId,
+                    width: "800px",
+                    height: "600px",
+                });
+            }
+            else if (obj.event === 'delete') {
+                if (data.length == 0) {
+                    common.modalMsg("未选中数据", "warning");
+                    return false;
+                }
+                DeleteForm(data[0].F_Id, null)
+            }
+            else if (obj.event === 'edit') {
+                if (data.length == 0) {
+                    common.modalMsg("未选中数据", "warning");
+                    return false;
+                }
+                common.modalOpen({
+                    title: "编辑按钮",
+                    url: "/SystemManage/ModuleButton/Form?moduleId=" + moduleId + "&keyValue=" + data[0].F_Id,
+                    width: "800px",
+                    height: "600px",
+                });
+            }
+            else if (obj.event === 'details') {
+                if (data.length == 0) {
+                    common.modalMsg("未选中数据", "warning");
+                    return false;
+                }
+                common.modalOpen({
+                    title: "查看按钮",
+                    url: "/SystemManage/ModuleButton/Details?keyValue=" + data[0].F_Id+"&moduleId="+moduleId,
+                    width: "800px",
+                    height: "600px",
+                    btn: []
+                });
+            }
+            else if (obj.event === 'clonebutton') {
+                common.modalOpen({
+                    title: "克隆按钮",
+                    url: "/SystemManage/ModuleButton/CloneButton?moduleId=" + moduleId,
+                    width: "400px",
+                    height: "600px",
+                });
+            }
+            else if (obj.event === 'TABLE_SEARCH') {
+                var _that = $("#searchField");
+                if (_that.hasClass("layui-hide")) {
+                    _that.removeClass('layui-hide');
+                } else {
+                    _that.addClass('layui-hide');
+                }
+                table.resize();
+            }
+            return false;
+        });
+        table.on('tool(currentTableFilter)', function (obj) {
+            if (obj.event === 'delete') {
+                DeleteForm(obj.data.F_Id, obj)
+            }
+            else if (obj.event === 'edit') {
+                common.modalOpen({
+                    title: "编辑按钮",
+                    url: "/SystemManage/ModuleButton/Form?moduleId=" + moduleId + "&keyValue=" + obj.data.F_Id,
+                    width: "800px",
+                    height: "600px",
+                });
+            }
+            else if (obj.event === 'details') {
+                common.modalOpen({
+                    title: "查看按钮",
+                    url: "/SystemManage/ModuleButton/Details?keyValue=" + obj.data.F_Id+"&moduleId="+ moduleId,
+                    width: "800px",
+                    height: "600px",
+                    btn: []
+                });
+            }
+            return false;
+        });
+
+        function DeleteForm(id, obj) {
+            layer.confirm('注：您确定要删除选中数据吗？', {
+                btn: ['确认', '取消'],
+                icon: 3,
+                title: '系统提示'
+            }, function (index) {
+                common.ajax({
+                    url: "/SystemManage/ModuleButton/DeleteForm",
+                    type: "POST",
+                    data: { keyValue: id },
+                    success: function () {
+                        layer.close(index);
+                        // 注意：不能再用 obj.del() 局部删除行。
+                        // 「绑定对象」列存在跨行合并(rowspan+隐藏单元格)，局部删行不会重算合并，
+                        // 残留的 rowspan / 隐藏单元格会导致后续列整体错位；
+                        // 统一重载表格，由 done 回调重新执行 mergeObjectCells（保留当前页码与搜索条件）
+                        table.reload('currentTableId');
+                    }
+                })
+            }, function () {
+
+            });
+        }
+    });
+</script>
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        @* <fieldset class="table-search-fieldset" id="searchField">
+            <legend>搜索信息</legend>
+            <div>
+                <form class="layui-form layui-form-pane" action="">
+                    <div class="layui-form-item">
+                        <div class="layui-inline">
+                            <label class="layui-form-label">菜单名称:</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="txt_name" name="txt_name" readonly class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <label class="layui-form-label">关键字:</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off"
+                                    class="layui-input" placeholder="">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <button type="submit" class="layui-btn layui-btn-primary" lay-submit
+                                lay-filter="data-search-btn"><i class="layui-icon">&#xe615;</i> 搜 索</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </fieldset> *@
+        <button type="submit" class="layui-btn layui-btn-primary layui-hide" lay-submit lay-filter="data-search-btn"><i
+                class="layui-icon">&#xe615;</i> 搜 索</button>
+        <script type="text/html" id="toolbarDemo">
+                    <div id="toolbar" style="display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <button id="NF-add" name="NF-add" authorize class="layui-btn layui-btn-sm" lay-event="add"><i class="layui-icon">&#xe654;</i>新增</button>
+                            <button id="NF-edit" name="NF-edit" authorize class="layui-btn layui-btn-sm layui-btn-warm layui-hide" lay-event="edit"><i class="layui-icon">&#xe642;</i>修改</button>
+                            <button id="NF-delete" name="NF-delete" authorize class="layui-btn layui-btn-sm layui-btn-danger layui-hide" lay-event="delete"> <i class="layui-icon">&#xe640;</i>删除</button>
+                            <button id="NF-details" name="NF-details" authorize="yes" class="layui-btn layui-btn-sm layui-btn-normal layui-hide" lay-event="details"> <i class="layui-icon">&#xe60b;</i>查看</button>
+                            <button id="NF-clonebutton" authorize="yes" class="layui-btn layui-btn-sm data-clonebutton-btn" lay-event="clonebutton"><i class="fa fa-paste"></i>克隆按钮</button>
+                        </div>
+                    </div>
+        </script>
+        <script type="text/html" id="currentTableBar">
+                    <a id="NF-edit" authorize class="layui-btn layui-btn-xs  layui-btn-warm" lay-event="edit">修改</a>
+                    <a id="NF-delete" authorize class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">删除</a>
+                    <a id="NF-details" authorize class="layui-btn layui-btn-xs layui-btn-normal" lay-event="details">查看</a>
+        </script>
+        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+    </div>
+</div>

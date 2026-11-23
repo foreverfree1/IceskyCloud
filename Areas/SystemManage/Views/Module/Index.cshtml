@@ -1,0 +1,322 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Index.cshtml";
+}
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <fieldset class="table-search-fieldset layui-hide" id="searchField">
+            <div>
+                <form class="layui-form layui-form-pane" action="">
+                    <div class="layui-form-item">
+                        <div class="layui-inline">
+                            <label class="layui-form-label">关键字:</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off"
+                                    class="layui-input" placeholder="">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <button type="submit" class="layui-btn layui-btn-primary" lay-submit
+                                lay-filter="data-search-btn"><i class="layui-icon">&#xe615;</i> 搜 索</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </fieldset>
+        <script type="text/html" id="toolbarDemo">
+            <div class="layui-btn-container" id="toolbar">
+                <button id="NF-add" authorize="yes" class="layui-btn layui-btn-sm" lay-event="add"><i class="layui-icon">&#xe654;</i>新增</button>
+                <button id="NF-edit" name="NF-edit" authorize="yes" class="layui-btn layui-btn-sm layui-btn-normal layui-hide" lay-event="clone"><i class="fa fa-paste"></i>复制</button>
+                <button id="NF-edit" name="NF-edit" authorize="yes" class="layui-btn layui-btn-sm layui-btn-warm layui-hide" lay-event="edit"><i class="layui-icon">&#xe642;</i>修改</button>
+                <button id="NF-delete" name="NF-delete" authorize="yes" class="layui-btn layui-btn-sm layui-btn-danger layui-hide" lay-event="delete"> <i class="layui-icon">&#xe640;</i>删除</button>
+                <button id="NF-details" name="NF-details" authorize="yes" class="layui-btn layui-btn-sm layui-btn-normal layui-hide" lay-event="details"> <i class="layui-icon">&#xe60b;</i>查看</button>
+                <button id="NF-config" name="NF-config" authorize="yes" class="layui-btn layui-btn-sm layui-hide" lay-event="config"> <i class="fa fa-gavel"></i>模块配置</button>
+            </div>
+        </script>
+        <script type="text/html" id="currentTableBar">
+            {{# if(d.F_Target=="iframe") {}}
+            <a id="NF-config" authorize class="layui-btn layui-btn-xs" lay-event="config">配置</a>
+            {{# }}}
+            <a id="NF-edit" authorize class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">修改</a>
+            <a id="NF-edit" authorize class="layui-btn layui-btn-xs layui-btn-normal" lay-event="clone">克隆</a>
+            <a id="NF-delete" authorize class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">删除</a>
+        </script>
+        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+    </div>
+</div>
+<script>
+    layui.use(['jquery', 'form', 'table', 'commonTable', 'common', 'optimizeSelectOption'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            common = layui.common;
+
+        // 保留页面手写按钮样式，不走 createtreetable 自动生成按钮
+        currentTableBar.innerHTML = common.authorizeButtonNew(currentTableBar.innerHTML);
+        toolbarDemo.innerHTML = common.authorizeButtonNew(toolbarDemo.innerHTML);
+
+        function checkedModule() {
+            var data = (layui.treeTable.checkStatus('currentTableId') || {}).data || [];
+            return {
+                data: data,
+                keyValue: data.length > 0 ? data[0].F_Id : null,
+                module: data.length > 0 ? data[0] : null
+            };
+        }
+
+        var options = {
+            elem: '#currentTableId',
+            id: 'currentTableId',
+            url: '/SystemManage/Module/GetTreeGridJson',
+            autoButtons: false,
+            cols: [[
+                { type: 'radio', width: 50, fixed: 'left' },
+                { field: 'F_FullName', title: '名称', width: 'auto', filter: true },
+                {
+                    field: 'F_Icon', title: '图标', width: 'auto',
+                    templet: function (d) {
+                        return d.F_Icon == "" ? "<i class=\"fa \"></i>" : "<i class=\"fa " + d.F_Icon + "\"></i>";
+                    }
+                },
+                { field: 'F_UrlAddress', title: '连接', width: 'auto', filter: true },
+                { field: 'F_SortCode', title: '排序', width: 'auto', sort: true, edit: 'number' },
+                {
+                    field: 'F_Target', title: '目标', filter: true, width: 'auto',
+                    templet: function (d) {
+                        if (d.F_Target == "expand") return "无页面";
+                        if (d.F_Target == "iframe") return "框架页";
+                        if (d.F_Target == "open") return "弹出页";
+                        if (d.F_Target == "blank") return "新窗口";
+                        return '';
+                    }
+                },
+                {
+                    field: 'F_IsMenu', title: '菜单', width: 'auto', filter: true,
+                    templet: function (d) {
+                        return d.F_IsMenu == true
+                            ? "<span class='layui-btn layui-btn-normal layui-btn-xs'>是</span>"
+                            : "<span class='layui-btn layui-btn-warm layui-btn-xs'>否</span>";
+                    }
+                },
+                {
+                    field: 'F_IsExpand', title: '展开', width: 'auto', filter: true,
+                    templet: function (d) {
+                        return d.F_IsExpand == true
+                            ? "<span class='layui-btn layui-btn-normal layui-btn-xs'>是</span>"
+                            : "<span class='layui-btn layui-btn-warm layui-btn-xs'>否</span>";
+                    }
+                },
+                {
+                    field: 'F_IsPublic', title: '公共', width: 'auto', filter: true,
+                    templet: function (d) {
+                        return d.F_IsPublic == true
+                            ? "<span class='layui-btn layui-btn-normal layui-btn-xs'>是</span>"
+                            : "<span class='layui-btn layui-btn-warm layui-btn-xs'>否</span>";
+                    }
+                },
+                {
+                    field: 'F_IsFields', title: '字段', width: 'auto', filter: true,
+                    templet: function (d) {
+                        return d.F_IsFields == true
+                            ? "<span class='layui-btn layui-btn-normal layui-btn-xs'>是</span>"
+                            : "<span class='layui-btn layui-btn-warm layui-btn-xs'>否</span>";
+                    }
+                },
+                {
+                    field: 'F_EnabledMark', title: '状态', width: 'auto', filter: true,
+                    templet: function (d) {
+                        return d.F_EnabledMark == true
+                            ? "<span class='layui-btn layui-btn-normal layui-btn-xs'>有效</span>"
+                            : "<span class='layui-btn layui-btn-warm layui-btn-xs'>无效</span>";
+                    }
+                },
+                { field: 'F_Authorize', title: '权限', width: 'auto', filter: true },
+                {
+                    field: 'F_CreatorTime', title: '创建时间', width: 'auto', filter: { type: 'date[yyyy-MM-dd]' },
+                    templet: function (d) {
+                        if (d.F_CreatorTime) {
+                            return new Date(d.F_CreatorTime).Format('yyyy-MM-dd');
+                        }
+                        return '';
+                    }
+                },
+                { field: 'F_Description', title: '备注', width: 'auto', filter: true },
+                { title: '操作', width: 'auto', toolbar: '#currentTableBar', align: 'center', fixed: 'right' }
+            ]],
+            tree: {
+                customName: {
+                    id: 'F_Id',
+                    pid: 'F_ParentId',
+                    name: 'F_FullName'
+                },
+                data: {
+                    isSimpleData: true,
+                    rootPid: '0'
+                },
+                view: {
+                    expandAllDefault: true
+                }
+            },
+            oneBtnList: ['NF-edit', 'NF-details', 'NF-delete', 'NF-modulebutton', 'NF-modulefields', 'NF-config'],
+            user: {
+                id: '@ViewData["CurrentUserId"]',
+                role: '@ViewData["CurrentRoleId"]',
+                org: '@ViewData["CurrentDeptId"]'
+            },
+            onToolbar: function (obj) {
+                var sel = checkedModule();
+                var keyValue = sel.keyValue;
+                var module = sel.module;
+                if (obj.event === 'add') {
+                    if (!keyValue || !module || module.F_IsExpand == false || module.F_Target != 'expand') {
+                        keyValue = '';
+                    }
+                    common.modalOpen({
+                        title: '添加菜单',
+                        url: '/SystemManage/Module/Form?event=add&keyValue=' + keyValue,
+                        width: '800px',
+                        height: '600px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'delete') {
+                    if (!module) {
+                        common.modalMsg('未选中数据', 'warning');
+                        return false;
+                    }
+                    common.deleteForm({
+                        url: '/SystemManage/Module/DeleteForm',
+                        param: { keyValue: module.F_Id },
+                        success: function () {
+                            common.reload('data-search-btn');
+                        }
+                    });
+                    return false;
+                }
+                if (obj.event === 'clone') {
+                    if (keyValue == null) {
+                        common.modalMsg('未选中数据', 'warning');
+                        return false;
+                    }
+                    common.modalOpen({
+                        title: '添加菜单',
+                        url: '/SystemManage/Module/Form?event=clone&keyValue=' + keyValue,
+                        width: '800px',
+                        height: '600px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'edit') {
+                    if (keyValue == null) {
+                        common.modalMsg('未选中数据', 'warning');
+                        return false;
+                    }
+                    common.modalOpen({
+                        title: '编辑菜单',
+                        url: '/SystemManage/Module/Form?event=edit&keyValue=' + keyValue,
+                        width: '800px',
+                        height: '600px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'details') {
+                    if (keyValue == null) {
+                        common.modalMsg('未选中数据', 'warning');
+                        return false;
+                    }
+                    common.modalOpen({
+                        title: '查看菜单',
+                        url: '/SystemManage/Module/Details?keyValue=' + keyValue,
+                        width: '800px',
+                        height: '600px',
+                        btn: []
+                    });
+                    return false;
+                }
+                if (obj.event === 'config') {
+                    if (!module) {
+                        common.modalMsg('未选中数据', 'warning');
+                        return false;
+                    }
+                    if (module.F_Target != 'iframe' || !module.F_UrlAddress) {
+                        common.modalAlert('菜单不能进行配置,请修改后重试', 'warning');
+                        return false;
+                    }
+                    common.openNewTabByIframe({
+                        title: '模块配置',
+                        href: '/SystemManage/Module/ConfigForm?moduleId=' + keyValue + '&moduleName=' + module.F_FullName,
+                        params: { rowData: module }
+                    });
+                    return false;
+                }
+            },
+            onEditTool: function (obj) {
+                if (obj.event === 'delete') {
+                    common.deleteForm({
+                        url: '/SystemManage/Module/DeleteForm',
+                        param: { keyValue: obj.data.F_Id },
+                        success: function () {
+                            obj.del();
+                        }
+                    });
+                    return false;
+                }
+                if (obj.event === 'edit') {
+                    common.modalOpen({
+                        title: '编辑菜单',
+                        url: '/SystemManage/Module/Form?event=edit&keyValue=' + obj.data.F_Id,
+                        width: '800px',
+                        height: '600px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'clone') {
+                    common.modalOpen({
+                        title: '添加菜单',
+                        url: '/SystemManage/Module/Form?event=clone&keyValue=' + obj.data.F_Id,
+                        width: '800px',
+                        height: '600px'
+                    });
+                    return false;
+                }
+                if (obj.event === 'config') {
+                    if (obj.data.F_Target != 'iframe' || !obj.data.F_UrlAddress) {
+                        common.modalAlert('配置不能创建字段,请修改后重试', 'warning');
+                        return false;
+                    }
+                    common.openNewTabByIframe({
+                        title: '模块配置',
+                        href: '/SystemManage/Module/ConfigForm?moduleId=' + obj.data.F_Id + '&moduleName=' + obj.data.F_FullName,
+                        params: { rowData: obj.data }
+                    });
+                    return false;
+                }
+            }
+        };
+        commonTable.createtreetable(options);
+
+        table.on('edit(currentTableFilter)', function (obj) {
+            if (obj.field == 'F_SortCode') {
+                common.submitForm({
+                    url: '/SystemManage/Module/SubmitUpdateForm',
+                    dataType: 'json',
+                    param: { F_Id: obj.data.F_Id || obj.data.id, SortCode: obj.value },
+                    async: false,
+                    close: false,
+                    success: function () {
+                        common.modalMsg('修改成功', 'success');
+                    }
+                });
+            }
+        });
+
+        form.on('submit(data-search-btn)', function (data) {
+            options.where = $.extend({}, options.where || {}, { keyword: data.field.txt_keyword || '' });
+            commonTable.reloadtreetable(options);
+            return false;
+        });
+
+        wcLoading.close();
+    });
+</script>

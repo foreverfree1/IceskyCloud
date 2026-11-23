@@ -1,0 +1,465 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<style>
+    /* 核心布局：富文本 + 字段面板 并排 */
+    .editor-wrapper {
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+        height: calc(max(0px, 100vh - 100px));
+    }
+
+    .editor-main {
+        flex: 1;
+        height: 100%;
+    }
+
+    .editor-sidebar {
+        box-sizing: border-box;
+        width: 200px;
+        height: 100%;
+        border: 1px solid #e6e6e6;
+        border-radius: 4px;
+        padding: 10px;
+        overflow-y: auto;
+    }
+
+        .editor-sidebar .layui-select {
+            width: 100% !important;
+        }
+
+    .field-list {
+        margin-top: 10px;
+        overflow-y: auto;
+    }
+
+    .field-item {
+        padding: 6px 8px;
+        margin: 4px 0;
+        background: #fff;
+        border: 1px solid #e6e6e6;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+    }
+
+        .field-item:hover {
+            background: #e6f7ff;
+            border-color: #91d5ff;
+        }
+</style>
+<script>
+
+     layui.use(['jquery', 'form', 'laydate', 'common','optimizeSelectOption', 'commonTable', 'table', 'upload'], function () {
+         var form = layui.form,
+              $ = layui.$,
+              upload = layui.upload,
+             common = layui.common,
+             table = layui.table,
+             commonTable = layui.commonTable,
+             laydate = layui.laydate;
+         var keyValue = $.request("keyValue");
+
+         $("#F_ModuleId").val($.request("F_ModuleId"));
+         //权限字段
+         common.authorizeFields('adminform');
+
+         // 封装同步ajax请求
+         function syncAjax(url, data) {
+             let result = null;
+             common.ajax({
+                 url: url,
+                 data: data,
+                 async: false,
+                 success: res => { result = typeof res.data !== "undefined" ? res.data : res; }
+             });
+             return result;
+         }
+
+         var demoPrintTableHtml = null
+         $(function () {
+         initControl();
+         if (!!keyValue) {
+             var data = syncAjax('/SystemManage/ModulePrint/GetFormJson', { keyValue: keyValue }) || {};
+             common.val('adminform', data);
+             common.setReadOnly('adminform')
+         }
+         initTinyMCE();
+         form.render();
+     });
+        wcLoading.close();
+
+        function initControl() {
+            //此处需修改
+            //绑定数据源下拉框
+            $("#F_PrintType").bindSelect({
+                 data: top.clients.dataItems["ModulePrintType"],
+                 id: ""
+            });
+        }
+
+         // 初始化 TinyMCE 富文本编辑器（预览 + 编辑）
+         function initTinyMCE() {
+            tinymce.init({
+                 selector: '#F_PrintContent',
+                 language: 'zh_CN',
+                 height: "100%",
+                 plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                     'preview', 'anchor', 'searchreplace', 'visualblocks', 'code',
+                     'fullscreen','insertdatetime', 'media', 'table','wordcount',
+                     'emoticons', 'help', 'visualchars'
+                 ],
+                 toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright | table | cell row column | forecolor backcolor | qrcode barcode',
+                 contextmenu: 'table cell row column | cellSideBorderColor',
+                 content_style: 'table td, table th { padding: 0 !important; margin:0 !important; }',
+                 // 1. 禁用 colgroup
+                 table_use_colgroups: false,
+                 // 2. 使用固定表格布局模式
+                 table_sizing_mode: 'fixed',
+                 // 3. 保持单元格宽度样式
+                 table_style_by_css: true,
+                 // 4. 禁用表格自动调整
+                 table_responsive_width: false,
+                 // 5. 保留所有样式属性
+                 valid_elements: '*[*]',
+                 extended_valid_elements: 'table[style|width|border|cellpadding|cellspacing|class],tr[style],td[style|colspan|rowspan|width|height|class],th[style|colspan|rowspan|width|height|class]',
+                 // 6. 保存时保留格式
+                 keep_styles: true,
+                 // 7. 格式化时保留表格样式
+                 formats: {
+                     table: {},
+                     td: {}
+                 },
+                 // 8. 其他保持不变的配置
+                 allow_conditional_comments: true,
+                 allow_html_in_named_anchor: true,
+                 paste_retain_style_properties: 'all',
+                 readonly: false,
+                 statusbar: false,
+                 elementpath: false,
+                 resize: false,
+                 promotion: false,
+                 branding: false,
+                 setup: function (editor) {
+                    // 单元格四边自定义边框右键菜单
+                     editor.ui.registry.addContextMenu('cellSideBorderColor', {
+                         update: function (element) {
+                             if (element && (element.nodeName === 'TD' || element.nodeName === 'TH')) {
+                                 return [{
+                                     text: '单元格单边边框',
+                                     tooltip: '选中单元格，设置任意单边边框颜色宽度',
+                                     onAction: function () {
+                                         const selectedCells = editor.dom.select('td[data-mce-selected], th[data-mce-selected]');
+                                         let cells = selectedCells && selectedCells.length > 0 ? selectedCells : [element];
+                                         if (!cells || cells.length === 0) {
+                                             alert('请先选中要设置的表格单元格');
+                                             return;
+                                         }
+
+                                         let firstCell = cells[0];
+                                         let compStyle = getComputedStyle(firstCell);
+
+                                         // 解析指定边框的宽度、线型、颜色（每次都基于当前单元格实时计算）
+                                         function getBorderInfo(sideKey) {
+                                             let width = compStyle[sideKey + 'Width'];
+                                             let style = compStyle[sideKey + 'Style'];
+                                             let color = compStyle[sideKey + 'Color'];
+
+                                             // 处理宽度：去掉px，如果是0px或none则返回默认值1
+                                             let widthNum = '1';
+                                             if (width && width !== '0px' && width !== '0') {
+                                                 widthNum = width.replace('px', '');
+                                             }
+
+                                             // 处理线型：如果是none则默认solid
+                                             let lineStyle = (style && style !== 'none') ? style : 'solid';
+
+                                             // 处理颜色：如果是透明则默认 #CCCCCC
+                                             let colorValue = '#CCCCCC';  // 修改默认颜色为 #CCCCCC
+                                             if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') {
+                                                 colorValue = color;
+                                             }
+
+                                             return {
+                                                 width: widthNum,
+                                                 lineStyle: lineStyle,
+                                                 color: colorValue
+                                             };
+                                         }
+
+                                         // 动态检测当前单元格哪个边框有实际值（作为默认值）
+                                         function getDefaultSide() {
+                                             const sides = ['borderTop', 'borderRight', 'borderBottom', 'borderLeft'];
+
+                                             for (let side of sides) {
+                                                 let width = compStyle[side + 'Width'];
+                                                 let style = compStyle[side + 'Style'];
+                                                 // 如果有宽度且不为0，并且样式不为none，则认为该边框有值
+                                                 if (width && width !== '0px' && style && style !== 'none') {
+                                                     return side;
+                                                 }
+                                             }
+                                             return 'borderLeft'; // 都没有则默认左边框
+                                         }
+
+                                         // 获取默认边框方向
+                                         const defaultSide = getDefaultSide();
+                                         // 根据默认方向动态获取边框信息（宽度、颜色）
+                                         const borderInfo = getBorderInfo(defaultSide);
+
+                                         editor.windowManager.open({
+                                             title: '设置单元格单边边框',
+                                             body: {
+                                                 type: 'panel',
+                                                 items: [
+                                                     {
+                                                         type: 'listbox',
+                                                         name: 'side',
+                                                         label: '选择边框方向',
+                                                         items: [
+                                                             { text: '上边框', value: 'borderTop' },
+                                                             { text: '右边框', value: 'borderRight' },
+                                                             { text: '下边框', value: 'borderBottom' },
+                                                             { text: '左边框', value: 'borderLeft' }
+                                                         ]
+                                                     },
+                                                     {
+                                                         type: 'input',
+                                                         name: 'width',
+                                                         label: '边框宽度(px)',
+                                                         placeholder: '1'
+                                                     },
+                                                     {
+                                                         type: 'colorinput',
+                                                         name: 'color',
+                                                         label: '选择边框颜色'
+                                                     }
+                                                 ]
+                                             },
+                                             initialData: {
+                                                 side: defaultSide,
+                                                 width: borderInfo.width,
+                                                 color: borderInfo.color
+                                             },
+                                             buttons: [
+                                                 { type: 'cancel', text: '取消' },
+                                                 { type: 'submit', text: '确定设置', primary: true }
+                                             ],
+                                             onSubmit: function (api) {
+                                                 const form = api.getData();
+                                                 const base = form.side; // borderTop / borderRight...
+                                                 let wVal = form.width.trim() || '1';
+                                                 let colorVal = form.color || '#CCCCCC';
+
+                                                 let currentCell = cells[0];
+                                                 let lineStyle = getComputedStyle(currentCell)[base + 'Style'] || 'solid';
+
+                                                 // 关键：用 editor.undoManager.transact 包裹，让编辑器感知修改、自动同步源码、支持撤销{insert\_element\_2\_}
+                                                 editor.undoManager.transact(function () {
+                                                     cells.forEach(cell => {
+                                                     const cssBase = base
+                                                         .replace('borderTop', 'border-top')
+                                                         .replace('borderRight', 'border-right')
+                                                         .replace('borderBottom', 'border-bottom')
+                                                         .replace('borderLeft', 'border-left');
+
+                                                     // 用 editor.dom.setStyle，官方方法，自动处理样式合并、同步到源码{insert\_element\_3\_}
+                                                     editor.dom.setStyle(cell, `${cssBase}-width`, wVal + 'px');
+                                                     editor.dom.setStyle(cell, `${cssBase}-style`, lineStyle);
+                                                     editor.dom.setStyle(cell, `${cssBase}-color`, colorVal);
+                                                     });
+
+                                                     // 触发内容变更，强制同步到源码/textarea
+                                                     editor.nodeChanged();
+                                                 });
+
+                                                 api.close();
+                                                 }
+                                         });
+                                     }
+                                 }];
+                             }
+                             return [];
+                         }
+                     });
+                  function getFieldNameFromSelection(editor) {
+                         const selectedContent = editor.selection.getContent();
+                         if (!selectedContent) {
+                             return null;
+                         }
+
+                         // 匹配已有的二维码/一维码标记
+                         let matched = selectedContent.match(/^\[\[(QR|BAR)CODE:([^\]]+)\]\]$/i);
+                         if (matched) {
+                             return {
+                                 fieldName: matched[2],
+                                 currentType: matched[1].toLowerCase(),
+                                 isMarked: true
+                             };
+                         }
+
+                         // 普通字段，去掉大括号
+                         return {
+                             fieldName: selectedContent.replace(/[{}]/g, ''),
+                             currentType: null,
+                             isMarked: false
+                         };
+                     }
+
+                     function markAsCode(editor, targetType, fieldName) {
+                         const prefix = targetType === 'qr' ? 'QRCODE' : 'BARCODE';
+                         const markedText = `[[${prefix}:${fieldName}]]`;
+                         editor.selection.setContent(markedText);
+                         editor.notificationManager.open({
+                             text: `已标记 ${fieldName} 为${targetType === 'qr' ? '二维码' : '一维码'}`,
+                             type: 'success',
+                             timeout: 2000
+                         });
+                     }
+
+                     // 二维码按钮
+                     editor.ui.registry.addButton('qrcode', {
+                         icon: 'qrcode',
+                         tooltip: '标记选中字段为二维码',
+                         onAction: function () {
+                             const fieldInfo = getFieldNameFromSelection(editor);
+                             if (!fieldInfo) {
+                                 alert('请先选中要标记的字段');
+                                 return;
+                             }
+
+                             if (fieldInfo.isMarked && fieldInfo.currentType === 'qr') {
+                                 editor.notificationManager.open({
+                                     text: `字段 ${fieldInfo.fieldName} 已经是二维码标记`,
+                                     type: 'info',
+                                     timeout: 1500
+                                 });
+                                 return;
+                             }
+
+                             markAsCode(editor, 'qr', fieldInfo.fieldName);
+                         }
+                     });
+
+                     // 一维码按钮
+                     editor.ui.registry.addButton('barcode', {
+                         icon: 'barcode',
+                         tooltip: '标记选中字段为一维码',
+                         onAction: function () {
+                             const fieldInfo = getFieldNameFromSelection(editor);
+                             if (!fieldInfo) {
+                                 alert('请先选中要标记的字段');
+                                 return;
+                             }
+
+                             if (fieldInfo.isMarked && fieldInfo.currentType === 'bar') {
+                                 editor.notificationManager.open({
+                                     text: `字段 ${fieldInfo.fieldName} 已经是一维码标记`,
+                                     type: 'info',
+                                     timeout: 1500
+                                 });
+                                 return;
+                             }
+
+                             markAsCode(editor, 'bar', fieldInfo.fieldName);
+                         }
+                     });
+                 }
+             });
+         }
+
+
+          // 字段面板逻辑 优化后
+          $(function () {
+             // 字段点击插入占位符到富文本编辑器
+             $('#fieldList').off('click').on('click', '.field-item', function () {
+                 const key = $(this).data('key');
+                 if (!key || !tinymce.activeEditor) return;
+                 const placeholder = `{${key}}`;
+                 tinymce.activeEditor.focus();
+                 tinymce.activeEditor.selection.setContent(placeholder);
+             });
+         });
+
+        //监听提交（TinyMCE 内容在 iframe 内，需同步后再提交，否则 F_PrintContent 可能不是最新）
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+           let content = tinymce.activeEditor.getContent()
+            const param = {
+             ...postData,
+             F_PrintContent:content
+            }
+
+            common.submitForm({
+                url: '/SystemManage/ModulePrint/SubmitForm?keyValue=' + keyValue,
+                param,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">编码</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" autocomplete="off" lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_FullName" name="F_FullName" autocomplete="off" lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">类型</label>
+                        <div class="layui-input-block">
+                            <select id="F_PrintType" name="F_PrintType" lay-verify="required">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label required">描述</label>
+                        <div class="layui-input-block" style="display:flex">
+                            <input type="text" id="F_Description" name="F_Description" autocomplete="off" lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12">
+                        <label class="layui-form-label">编辑模板</label>
+                        <div class="layui-input-block">
+                            <!-- 富文本 + 字段面板 并排布局 -->
+                            <div class="editor-wrapper">
+                                <div class="editor-main">
+                                    <textarea id="F_PrintContent" name="F_PrintContent"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+

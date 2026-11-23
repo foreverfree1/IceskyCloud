@@ -1,0 +1,946 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<style>
+    /* 核心布局：富文本 + 字段面板 并排 */
+    .editor-wrapper {
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+        height: calc(max(0px, 100vh - 100px));
+    }
+
+    .editor-main {
+        flex: 1;
+        height: 100%;
+    }
+
+    .editor-sidebar {
+        box-sizing: border-box;
+        width: 200px;
+        height: 100%;
+        border: 1px solid #e6e6e6;
+        border-radius: 4px;
+        padding: 10px;
+        overflow-y: auto;
+    }
+
+    .editor-sidebar .layui-select {
+        width: 100% !important;
+    }
+
+    .field-list {
+        margin-top: 10px;
+        overflow-y: auto;
+    }
+
+    .field-item {
+        padding: 6px 8px;
+        margin: 4px 0;
+        background: #fff;
+        border: 1px solid #e6e6e6;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+    }
+
+    .field-item:hover {
+        background: #e6f7ff;
+        border-color: #91d5ff;
+    }
+
+    /* 一键生成列表 - 穿梭框弹窗 */
+    .gen-list-field-dialog {
+        padding: 12px 14px 8px;
+        box-sizing: border-box;
+    }
+    .gen-list-hint {
+        color: #999;
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+    .gen-list-field-dialog .layui-transfer-active {
+        margin: 0 8px;
+    }
+    .gen-list-field-dialog .layui-transfer-data li.dragging {
+        opacity: .5;
+        background: #e6f7ff;
+    }
+</style>
+
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'common', 'optimizeSelectOption', 'commonTable', 'table', 'upload', 'transfer'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            upload = layui.upload,
+            common = layui.common,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            transfer = layui.transfer,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        var moduleId = $.request("F_ModuleId");
+        var tablelist = []
+
+        $("#F_ModuleId").val(moduleId);
+        //权限字段
+        common.authorizeFields('adminform');
+
+        // 封装同步ajax请求
+        function syncAjax(url, data) {
+            let result = null;
+            common.ajax({
+                url: url,
+                data: data,
+                async: false,
+                success: res => { result = typeof res.data !== "undefined" ? res.data : res; }
+            });
+            return result;
+        }
+
+        var demoPrintTableHtml = null
+        $(function () {
+            initControl();
+            if (keyValue) {
+                const data = syncAjax('/SystemManage/ModulePrint/GetFormJson', { keyValue }) || {};
+                common.val('adminform', data);
+            }
+
+            renderFieldList($("#dataSourceSelect option:first").val());
+            initTinyMCE();
+            form.render();
+        });
+
+        // F_FullName输入框，半角算0.5个字符，中文算1个字符，最大长度6
+        $(function () {
+            $('#F_FullName').on('input', function () {
+                let val = $(this).val();
+                let curLength = 0;
+                let result = '';
+                for (let i = 0; i < val.length; i++) {
+                    let c = val.charAt(i);
+                    // 全角字符(包括中文、日文、韩文、全角符号)都算1，半角数字/字母/符号算0.5
+                    if (c.match(/[\uFF01-\uFF60\uFFE0-\uFFE6]|[\u3000-\u303F]|[\u4e00-\u9fa5]/)) {
+                        // 全角字符，包括中日韩
+                        if (curLength + 1 > 6) break;
+                        curLength += 1;
+                        result += c;
+                    } else {
+                        if (curLength + 0.5 > 6) break;
+                        curLength += 0.5;
+                        result += c;
+                    }
+                }
+                if (result !== val) {
+                    $(this).val(result);
+                    layer.msg('名称长度不能超过6（全角字符算1，半角字符算0.5）', { icon: 0, time: 1200 });
+                }
+            });
+        });
+
+        wcLoading.close();
+
+        // 封装渲染字段列表逻辑，便于复用
+        // 缓存当前表字段，供一键生成列表使用
+        var currentTableFields = [];
+
+        function renderFieldList(tableName) {
+            const fields = syncAjax('/SystemManage/ModuleFields/GetGridByTableNameJson?tableNames=' + tableName, { page: 1, rows: 9999 }) || [];
+            currentTableFields = Array.isArray(fields) ? fields : [];
+            if (fields.length === 0) {
+                $('#fieldList').html('<div style="padding:10px;color:#bbb;text-align:center;">暂无字段</div>');
+            } else {
+                // 添加默认字段：序号、打印时间、登录用户、登录部门、登录角色
+                const defaultFields = [
+                    { key: 'RowNumber', name: '打印序号' },
+                    { key: 'PrintTime', name: '打印时间' },
+                    { key: 'F_loginUser', name: '登录用户' },
+                    { key: 'F_loginRole', name: '登录部门' },
+                    { key: 'F_loginOrg', name: '登录角色' }
+                ];
+                const defaultFieldsHtml = defaultFields.map(f =>
+                    `<div class="field-item" data-key="${f.key}" title="${f.name} (${f.key})">${f.name} <span style="color:#999;">(${f.key})</span></div>`
+                ).join('');
+                const fieldHtml = defaultFieldsHtml + fields.map(field =>
+                    `<div class="field-item" data-key="${field.F_EnCode}" title="${field.F_FullName} (${field.F_EnCode})">${field.F_FullName} <span style="color:#999;">(${field.F_EnCode})</span></div>`
+                ).join('');
+                $('#fieldList').html(fieldHtml);
+            }
+            // 字段点击插入占位符到富文本编辑器
+            $('#fieldList').off('click').on('click', '.field-item', function () {
+                const key = $(this).data('key');
+                if (!key || !tinymce.activeEditor) return;
+                const editor = tinymce.activeEditor;
+                const placeholder = `{${key}}`;
+                editor.focus();
+                // 打印时直接扫 {字段} 占位符，无需 data-print-field
+                editor.selection.setContent(placeholder);
+            });
+        }
+
+        // 一键生成列表：弹窗勾选字段（默认全选），确认后生成表格
+        function generateListTable() {
+            const editor = tinymce.activeEditor;
+            if (!editor) {
+                layer.msg('编辑器未就绪', { icon: 0 });
+                return;
+            }
+            const tableName = $('#dataSourceSelect').val();
+            if (!tableName) {
+                layer.msg('请先选择数据源表', { icon: 0 });
+                return;
+            }
+            let fields = currentTableFields;
+            if (!fields || !fields.length) {
+                fields = syncAjax('/SystemManage/ModuleFields/GetGridByTableNameJson?tableNames=' + tableName, { page: 1, rows: 9999 }) || [];
+            }
+            if (!fields.length) {
+                layer.msg('当前表暂无字段', { icon: 0 });
+                return;
+            }
+
+            // 可选列：序号 + 业务字段（不含打印时间/登录信息）
+            const allCols = [
+                { key: 'RowNumber', name: '打印序号' },
+                ...fields
+                    .filter(f => f && f.F_EnCode)
+                    .map(f => ({ key: f.F_EnCode, name: f.F_FullName || f.F_EnCode }))
+            ];
+
+            openGenListFieldDialog(allCols, function (selectedCols) {
+                insertListTable(editor, selectedCols);
+            });
+        }
+
+        // 选字段弹窗：左右穿梭；右侧顺序 = 表格列顺序（可拖拽调整）
+        function openGenListFieldDialog(allCols, onConfirm) {
+            const transferData = allCols.map(c => ({
+                value: c.key,
+                title: c.name + ' (' + c.key + ')'
+            }));
+            const defaultValue = allCols.map(c => c.key);
+            const nameMap = {};
+            allCols.forEach(c => { nameMap[c.key] = c.name; });
+
+            const content = [
+                '<div class="gen-list-field-dialog">',
+                '  <div id="genListTransfer"></div>',
+                '</div>'
+            ].join('');
+
+            layer.open({
+                type: 1,
+                title: '选择列（可拖拽调整顺序）',
+                area: ['680px', '500px'],
+                btn: ['生成', '取消'],
+                content: content,
+                success: function (layero) {
+                    transfer.render({
+                        elem: layero.find('#genListTransfer')[0],
+                        title: ['全部待选列', '全部已选列'],
+                        data: transferData,
+                        value: defaultValue,
+                        showSearch: true,
+                        width: 270,
+                        height: 360,
+                        id: 'genListTransfer'
+                    });
+
+                    function getRightUl() {
+                        return layero.find('.layui-transfer-box').eq(1).find('ul.layui-transfer-data');
+                    }
+                    function rightItems() {
+                        return getRightUl().children('li').filter(function () {
+                            return $(this).find('input[type=checkbox]').length > 0;
+                        });
+                    }
+                    function enableRightDrag() {
+                        const $ul = getRightUl();
+                        $ul.children('li').attr('draggable', false);
+                        rightItems().attr('draggable', true);
+                    }
+                    enableRightDrag();
+
+                    // 穿梭后重新绑定拖拽
+                    layero.on('click', '.layui-transfer-active .layui-btn', function () {
+                        setTimeout(enableRightDrag, 0);
+                    });
+
+                    let dragEl = null;
+                    getRightUl().on('dragstart', 'li', function (e) {
+                        if (!$(this).find('input[type=checkbox]').length) return;
+                        dragEl = this;
+                        $(this).addClass('dragging');
+                        e.originalEvent.dataTransfer.effectAllowed = 'move';
+                        try { e.originalEvent.dataTransfer.setData('text/plain', '1'); } catch (err) { }
+                    });
+                    getRightUl().on('dragend', 'li', function () {
+                        $(this).removeClass('dragging');
+                        dragEl = null;
+                    });
+                    getRightUl().on('dragover', 'li', function (e) {
+                        e.preventDefault();
+                        if (!dragEl || dragEl === this) return;
+                        if (!$(this).find('input[type=checkbox]').length) return;
+                        const $items = rightItems();
+                        if ($items.index(dragEl) < $items.index(this)) {
+                            $(this).after(dragEl);
+                        } else {
+                            $(this).before(dragEl);
+                        }
+                    });
+                },
+                yes: function (index, layero) {
+                    // 按右侧 DOM 顺序收集（比 getData 更能保证顺序）
+                    const selected = [];
+                    layero.find('.layui-transfer-box').eq(1).find('ul.layui-transfer-data > li').each(function () {
+                        const $input = $(this).find('input[type=checkbox]');
+                        if (!$input.length) return;
+                        const key = String($input.val());
+                        if (!key || !nameMap[key]) return;
+                        selected.push({ key: key, name: nameMap[key] });
+                    });
+                    if (!selected.length) {
+                        layer.msg('请至少选择一列到右侧', { icon: 0 });
+                        return;
+                    }
+                    layer.close(index);
+                    onConfirm(selected);
+                }
+            });
+        }
+
+        function insertListTable(editor, cols) {
+            // 按表头字数估列宽（只看表头，不看 {占位符}，避免列被撑得很宽）
+            function headerWidthPx(name) {
+                const nameLen = Array.from(String(name || '')).length;
+                return Math.max(32, nameLen * 16 + 12);
+            }
+
+            const colWidths = cols.map(c => headerWidthPx(c.name));
+            const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
+
+            const headerCells = cols.map((c, i) => {
+                return `<td style="width:${colWidths[i]}px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</td>`;
+            }).join('');
+            const valueCells = cols.map((c, i) => {
+                return `<td style="width:${colWidths[i]}px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{${c.key}}</td>`;
+            }).join('');
+
+            const html = [
+                `<table is-list-table="true" border="1" style="border-collapse:collapse;width:${tableWidth}px;table-layout:fixed;">`,
+                `<tbody>`,
+                `<tr>${headerCells}</tr>`,
+                `<tr>${valueCells}</tr>`,
+                `</tbody>`,
+                `</table>`,
+                `<p></p>`
+            ].join('');
+
+            editor.focus();
+            editor.undoManager.transact(function () {
+                editor.insertContent(html);
+            });
+            layer.msg('已生成列表表格', { icon: 1, time: 1000 });
+        }
+
+        // 选择数据源select切换，动态更新字段列表
+        form.on('select(dataSource)', function (data) {
+            renderFieldList(data.value);
+        });
+
+        function initControl() {
+            //此处需修改
+            //绑定数据源下拉框
+            $("#F_PrintType").bindSelect({
+                data: top.clients.dataItems["ModulePrintType"],
+                id: ""
+            });
+            const GetFormJson = syncAjax('/SystemManage/Module/GetFormJson', { keyValue: moduleId })
+            const mainTableArr = (GetFormJson?.F_MainTable || '').split(',').filter(Boolean);
+            const mainViewArr = (GetFormJson?.F_MainView || '').split(',').filter(Boolean);
+            const tableNameArr = (GetFormJson?.F_TableName || '').split(',').filter(Boolean);
+            const subObjectArr = (GetFormJson?.F_SubObject || '').split(',').filter(Boolean);
+            const tables = Array.from(new Set([...mainTableArr, ...mainViewArr, ...tableNameArr, ...subObjectArr]));
+
+            $("#dataSourceSelect").bindSelect({
+                data: tables.map(item => {
+                    const res = syncAjax('/SystemManage/ModuleFields/GetModuleTableListJson', { encode: item });
+                    const obj = res && res[0];
+                    const isFunc = obj?.DbObjectKind === "Func";
+                    const isProc = obj?.DbObjectKind === "Proc";
+                    const tablename = obj ? (isFunc || isProc ? obj.Name : obj.Description) : "";
+                    let suffix = "（表）";
+                    if (item.startsWith("view_")) suffix = "（视图）";
+                    else if (item.startsWith("func_")) suffix = "（函数）";
+                    else if (item.startsWith("proc_")) suffix = "（过程）";
+                    return { id: item, text: tablename + suffix };
+                }),
+                search: true,
+            });
+        }
+
+        // 初始化 TinyMCE 富文本编辑器（预览 + 编辑）
+        function initTinyMCE() {
+            tinymce.init({
+                selector: '#F_PrintContent',
+                language: 'zh_CN',
+                height: "100%",
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                    'preview', 'anchor', 'searchreplace', 'visualblocks', 'code',
+                    'fullscreen', 'insertdatetime', 'media', 'table', 'wordcount',
+                    'emoticons', 'help', 'visualchars'
+                ],
+                toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright | table | cell row column | forecolor backcolor | qrcode barcode mergefield genlist',
+                contextmenu: 'table cell row column | cellSideBorderColor',
+                content_style: [
+                    'body { font-size: 8pt; }',
+                    'table { table-layout: fixed !important; overflow: hidden; }',
+                    'table col { min-width: 0; }',
+                    'table td, table th, table td p, table th p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; min-width: 0; }',
+                    'table td:empty::before, table th:empty::before { content: "\\00a0"; }',
+                    'table.mce-clonedresizable { display: block !important; min-width: 0 !important; min-height: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }'
+                ].join(' '),
+                font_size_formats: '8pt 10pt 12pt 14pt 18pt 24pt 36pt',
+                // 列宽放在 col 上，合并单元格后再拖下面的列线才不会错位
+                table_use_colgroups: true,
+                // 2. 固定像素列宽（不用百分比）
+                table_sizing_mode: 'fixed',
+                // 拖列边保持表宽；四角等比由 setup 里 scaleTable 处理
+                table_column_resizing: 'preservetable',
+                // 3. 保持单元格宽度样式
+                table_style_by_css: true,
+                // 4. 禁用表格自动调整
+                table_responsive_width: false,
+                // 5. 保留所有样式属性
+                valid_elements: '*[*]',
+                extended_valid_elements: 'table[is-list-table|max-list-rows|is-code-sheet|max-col-rows|code-sheet-subtotal|style|width|border|cellpadding|cellspacing|class],tr[style],td[style|colspan|rowspan|width|height|class],th[style|colspan|rowspan|width|height|class],span[style]',
+                // 6. 保存时保留格式
+                keep_styles: true,
+                // 7. 格式化时保留表格样式
+                formats: {
+                    table: {},
+                    td: {}
+                },
+                // 8. 其他保持不变的配置
+                allow_conditional_comments: true,
+                allow_html_in_named_anchor: true,
+                paste_retain_style_properties: 'all',
+                readonly: false,
+                statusbar: false,
+                elementpath: false,
+                resize: false,
+                promotion: false,
+                branding: false,
+                setup: function (editor) {
+                    // 列宽跟真实竖线走，避免合并格把列宽算乱
+                    function ensureColGroup(table) {
+                        if (!table || table.querySelector('col')) return;
+                        const left = table.getBoundingClientRect().left;
+                        const xs = [Math.round(table.getBoundingClientRect().width)];
+                        Array.prototype.forEach.call(table.querySelectorAll('td,th'), function (cell) {
+                            xs.push(Math.round(cell.getBoundingClientRect().right - left));
+                        });
+                        const lines = xs.filter(function (x, i) { return x > 1 && xs.indexOf(x) === i; })
+                            .sort(function (a, b) { return a - b; });
+                        let prev = 0;
+                        const widths = [];
+                        lines.forEach(function (x) {
+                            if (x - prev >= 2) widths.push(x - prev);
+                            prev = x;
+                        });
+                        if (!widths.length) return;
+                        editor.undoManager.ignore(function () {
+                            const cg = editor.dom.create('colgroup');
+                            widths.forEach(function (w) {
+                                cg.appendChild(editor.dom.create('col', { style: 'width:' + w + 'px' }));
+                            });
+                            table.insertBefore(cg, table.firstChild);
+                            editor.dom.setStyle(editor.dom.select('td,th', table), 'width', null);
+                        });
+                    }
+                    editor.on('mouseover', function (e) {
+                        const table = editor.dom.getParent(e.target, 'table');
+                        if (table) ensureColGroup(table);
+                    });
+
+                    // 修改内容：按目标宽把各列等比缩放
+                    var snapCols = null;
+                    function scaleTable(table, toW, cols) {
+                        const colEls = table.querySelectorAll('colgroup col');
+                        if (!colEls.length || !(toW > 0)) return;
+                        cols = cols || Array.prototype.map.call(colEls, function (c) {
+                            return parseFloat(c.style.width) || c.getBoundingClientRect().width || 1;
+                        });
+                        const fromW = cols.reduce(function (a, b) { return a + b; }, 0);
+                        toW = Math.round(toW);
+                        editor.dom.setStyles(table, { width: toW + 'px', tableLayout: 'fixed', overflow: 'hidden' });
+                        var used = 0;
+                        for (var i = 0; i < colEls.length - 1; i++) {
+                            var w = Math.max(1, Math.round(cols[i] * toW / fromW));
+                            used += w;
+                            editor.dom.setStyle(colEls[i], 'width', w + 'px');
+                        }
+                        editor.dom.setStyle(colEls[colEls.length - 1], 'width', Math.max(1, toW - used) + 'px');
+                    }
+                    editor.on('ObjectResizeStart', function (e) {
+                        snapCols = null;
+                        if (!e.target || e.target.nodeName !== 'TABLE') return;
+                        snapCols = Array.prototype.map.call(e.target.querySelectorAll('colgroup col'), function (c) {
+                            return parseFloat(c.style.width) || 1;
+                        });
+                        Array.prototype.forEach.call(editor.getDoc().querySelectorAll('table.mce-clonedresizable'), function (ghost) {
+                            ghost.innerHTML = '';
+                        });
+                    });
+                    editor.on('ObjectResized', function (e) {
+                        const cols = snapCols;
+                        snapCols = null;
+                        if (!e.target || e.target.nodeName !== 'TABLE') return;
+                        if (!e.origin || String(e.origin).indexOf('corner-') !== 0) return;
+                        setTimeout(function () { scaleTable(e.target, e.width, cols); }, 0);
+                    });
+
+                    editor.on('OpenWindow', function (e) {
+                        const dialogApi = e.dialog;
+                        const data = dialogApi.getData();
+                        // 只拦截表格属性弹窗
+                        if (!('width' in data && 'height' in data)) return;
+
+                        // 获取当前选中表格DOM
+                        let tableEl = editor.dom.getParent(editor.selection.getStart(), 'table');
+                        let isDetailTableDefault = false;
+                        let maxRowsDefault = '';
+                        let isCodeSheetDefault = false;
+                        let maxColRowsDefault = '';
+                        let isSubtotalDefault = false;
+
+                        // 读取已有属性做回显
+                        if (tableEl) {
+                            isDetailTableDefault = tableEl.getAttribute('is-list-table') === 'true';
+                            maxRowsDefault = tableEl.getAttribute('max-list-rows') || '';
+                            isCodeSheetDefault = tableEl.getAttribute('is-code-sheet') === 'true';
+                            maxColRowsDefault = tableEl.getAttribute('max-col-rows') || '';
+                            isSubtotalDefault = tableEl.getAttribute('code-sheet-subtotal') === 'true';
+                        }
+
+                        // 修改内容：历史数据若两者都开，优先保留明细表（与弹窗互斥一致）
+                        if (isDetailTableDefault && isCodeSheetDefault) {
+                            isCodeSheetDefault = false;
+                            isSubtotalDefault = false;
+                        }
+
+                        // 初始化弹窗默认值（回显）
+                        dialogApi.setData({
+                            islist: isDetailTableDefault,
+                            maxListRows: maxRowsDefault,
+                            iscode: isCodeSheetDefault,
+                            maxColRows: maxColRowsDefault,
+                            issubtotal: isSubtotalDefault
+                        });
+                        // 禁用状态：插件里输入项默认 enabled:false，切入「数据」页时 onTabChange 再按勾选同步
+
+
+                        // 劫持关闭/提交逻辑，替代原来手动取DOM
+                        const originalClose = dialogApi.close;
+                        dialogApi.close = function () {
+                            // 直接从弹窗内置数据取值，不用getElementById
+                            const formData = dialogApi.getData();
+                            let isChecked = !!formData.islist;
+                            let isCodeChecked = !!formData.iscode;
+                            let isSubtotalChecked = !!formData.issubtotal;
+                            const maxRowsVal = (formData.maxListRows || '').trim();
+                            const maxColRowsVal = (formData.maxColRows || '').trim();
+
+                            // 修改内容：保存时再兜底互斥（只保留一种）
+                            if (isChecked && isCodeChecked) {
+                                isCodeChecked = false;
+                                isSubtotalChecked = false;
+                            }
+                            if (!isCodeChecked) {
+                                isSubtotalChecked = false;
+                            }
+
+                            // 写入表格自定义属性
+                            if (tableEl) {
+                                tableEl.setAttribute('is-list-table', isChecked ? 'true' : 'false');
+                                if (isChecked && maxRowsVal && maxRowsVal !== '0') {
+                                    tableEl.setAttribute('max-list-rows', maxRowsVal);
+                                } else {
+                                    tableEl.removeAttribute('max-list-rows');
+                                }
+                                tableEl.setAttribute('is-code-sheet', isCodeChecked ? 'true' : 'false');
+                                if (isCodeChecked && maxColRowsVal && maxColRowsVal !== '0') {
+                                    tableEl.setAttribute('max-col-rows', maxColRowsVal);
+                                } else {
+                                    tableEl.removeAttribute('max-col-rows');
+                                }
+                                if (isCodeChecked && isSubtotalChecked) {
+                                    tableEl.setAttribute('code-sheet-subtotal', 'true');
+                                } else {
+                                    tableEl.removeAttribute('code-sheet-subtotal');
+                                }
+                            }
+
+                            // 执行原生关闭逻辑
+                            originalClose.call(dialogApi);
+                            if (tableEl) setTimeout(function () { scaleTable(tableEl, parseFloat(formData.width)); }, 0);
+                        };
+                    });
+
+                    // 单元格四边自定义边框右键菜单
+                    editor.ui.registry.addContextMenu('cellSideBorderColor', {
+                        update: function (element) {
+                            if (element && (element.nodeName === 'TD' || element.nodeName === 'TH')) {
+                                return [{
+                                    text: '单元格单边边框',
+                                    tooltip: '选中单元格，设置任意单边边框颜色宽度',
+                                    onAction: function () {
+                                        var cells = editor.dom.select('td[data-mce-selected], th[data-mce-selected]');
+                                        if (!cells.length) cells = [element];
+                                        function readSide(side) {
+                                            var s = getComputedStyle(cells[0]);
+                                            var st = s.getPropertyValue(side + '-style');
+                                            return {
+                                                need: st !== 'none' && st !== 'hidden',
+                                                width: (s.getPropertyValue(side + '-width') || '1px').replace('px', '') || '1',
+                                                color: s.getPropertyValue(side + '-color') || '#CCCCCC'
+                                            };
+                                        }
+                                        editor.windowManager.open({
+                                            title: '设置单元格单边边框',
+                                            body: {
+                                                type: 'panel',
+                                                items: [
+                                                    { type: 'listbox', name: 'side', label: '选择边框方向', items: [
+                                                        { text: '上边框', value: 'border-top' },
+                                                        { text: '右边框', value: 'border-right' },
+                                                        { text: '下边框', value: 'border-bottom' },
+                                                        { text: '左边框', value: 'border-left' }
+                                                    ]},
+                                                    { type: 'checkbox', name: 'need', label: '需要边框' },
+                                                    { type: 'input', name: 'width', label: '边框宽度(px)' },
+                                                    { type: 'colorinput', name: 'color', label: '选择边框颜色' }
+                                                ]
+                                            },
+                                            initialData: $.extend({ side: 'border-top' }, readSide('border-top')),
+                                            buttons: [
+                                                { type: 'cancel', text: '取消' },
+                                                { type: 'submit', text: '确定设置', primary: true }
+                                            ],
+                                            onChange: function (api, details) {
+                                                if (details.name === 'side') api.setData($.extend({ side: api.getData().side }, readSide(api.getData().side)));
+                                            },
+                                            onSubmit: function (api) {
+                                                var form = api.getData();
+                                                var val = form.need ? ((form.width || '1') + 'px solid ' + (form.color || '#CCCCCC')) : 'hidden';
+                                                editor.undoManager.transact(function () {
+                                                    cells.forEach(function (cell) { editor.dom.setStyle(cell, form.side, val); });
+                                                });
+                                                api.close();
+                                            }
+                                        });
+                                    }
+                                }];
+                            }
+                            return [];
+                        }
+                    });
+
+                    
+                    // 选中字段，点击按钮直接插入可视化条码/二维码用于测试
+                    function getSelectedFieldContent(editor) {
+                        const selectedContent = editor.selection.getContent({ format: 'text' }).trim();
+                        if (!selectedContent) {
+                            return null;
+                        }
+                        // 清除包裹的大括号和空格
+                        return selectedContent.replace(/[{}]/g, '').replace(/^\s+|\s+$/g, '');
+                    }
+
+
+                    // 插入可视化条码/二维码（实际插入SVG或canvas的占位，可直接预览效果！）
+                    function insertBarcodeVisual(editor, type, fieldName) {
+                        if (!fieldName) return;
+                        let html = '';
+                        let id = '';
+                        if (type === 'barcode') {
+                            id = 'barcode_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                            html = `<svg id="${id}" data-code="${fieldName}"></svg>`;
+                        } else if (type === 'qrcode') {
+                            id = 'qrcode_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                            html = `<span id="${id}" data-code="${fieldName}"></span>`;
+                        }
+                        if (html) {
+                            // 插入占位符
+                            editor.selection.setContent(html);
+                            const doc = editor.getDoc ? editor.getDoc() : (
+                                editor.iframeElement ? editor.iframeElement.contentDocument : null
+                            );
+                            if (!doc) return;
+                            const el = doc.getElementById(id);
+                            if (el) {
+                                if (type === 'barcode') {
+                                    // 一维码部分不变，JsBarcode是直接操作canvas的
+                                    var canvas = document.createElement('canvas');
+                                    JsBarcode(canvas, fieldName, {
+                                        format: "CODE128",
+                                        width: 1,
+                                        height: 32,
+                                        displayValue: true
+                                    });
+                                    var imgDataUrl = canvas.toDataURL("image/png");
+                                    var img = document.createElement('img');
+                                    img.src = imgDataUrl;
+                                    img.setAttribute("data-code", fieldName);
+                                    img.setAttribute("data-type", "barcode");
+                                    img.style.height = "38px";
+                                    el.parentNode.replaceChild(img, el);
+                                } else if (type === 'qrcode') {
+                                    // 二维码部分：先创建临时div，再取canvas
+                                    const tempDiv = document.createElement('div');
+                                    new QRCode(tempDiv, {
+                                        text: fieldName,
+                                        width: 60,
+                                        height: 60,
+                                        margin: 1
+                                    });
+                                    const realCanvas = tempDiv.querySelector('canvas');
+                                    if (realCanvas) {
+                                        var imgDataUrl = realCanvas.toDataURL("image/png");
+                                        var img = document.createElement('img');
+                                        img.src = imgDataUrl;
+                                        img.setAttribute("data-code", fieldName);
+                                        img.setAttribute("data-type", "qrcode");
+                                        img.style.height = "60px";
+                                        el.parentNode.replaceChild(img, el);
+                                    }
+                                }
+
+                            }
+                            editor.notificationManager.open({
+                                text: `${type === "barcode" ? "插入了一维码" : "插入了二维码"}`,
+                                type: 'info',
+                                timeout: 2000
+                            });
+                        }
+                    }
+
+                    function getFieldNameFromSelection(editor) {
+                        const selectedContent = editor.selection.getContent();
+                        if (!selectedContent) {
+                            return null;
+                        }
+
+                        // 仅匹配已有的可合并字段标记
+                        let matched = selectedContent.match(/^\[\[(MERGE):([^\]]+)\]\]$/i);
+                        if (matched) {
+                            let currentType = matched[1].toLowerCase();
+                            if (currentType === "mergefield") currentType = "merge";
+                            return {
+                                fieldName: matched[2],
+                                currentType: currentType,
+                                isMarked: true
+                            };
+                        }
+
+                        // 普通字段，去掉大括号
+                        return {
+                            fieldName: selectedContent.replace(/[{}]/g, ''),
+                            currentType: null,
+                            isMarked: false
+                        };
+                    }
+
+
+                    function markAsCode(editor, targetType, fieldName) {
+                        let prefix, msg;
+                        if (targetType === 'merge') {
+                            prefix = 'MERGE';
+                            msg = `已标记 ${fieldName} 为可合并字段`;
+                        } else {
+                            prefix = '';
+                            msg = '';
+                        }
+                        if (!prefix) return;
+                        const markedText = `[[${prefix}:${fieldName}]]`;
+                        editor.selection.setContent(markedText);
+                        editor.notificationManager.open({
+                            text: msg,
+                            type: 'success',
+                            timeout: 2000
+                        });
+                    }
+
+                    editor.ui.registry.addButton('genlist', {
+                        icon: 'gen-list',
+                        tooltip: '一键生成列表',
+                        onAction: function () {
+                            generateListTable();
+                        }
+                    });
+
+
+
+                    // 二维码按钮：插入可视化二维码
+                    editor.ui.registry.addButton('qrcode', {
+                        icon: 'qrcode',
+                        tooltip: '插入可视化二维码（预览）',
+                        onAction: function () {
+                            const fieldName = getSelectedFieldContent(editor);
+                            if (!fieldName) {
+                                editor.notificationManager.open({
+                                    text: '请先选中要插入二维码的字段',
+                                    type: 'info',
+                                    timeout: 2000
+                                });
+                                return;
+                            }
+                            insertBarcodeVisual(editor, 'qrcode', fieldName);
+                        }
+                    });
+
+                    // 一维码按钮：插入可视化一维码
+                    editor.ui.registry.addButton('barcode', {
+                        icon: 'barcode',
+                        tooltip: '插入可视化一维码（预览）',
+                        onAction: function () {
+                            const fieldName = getSelectedFieldContent(editor);
+                            if (!fieldName) {
+                                editor.notificationManager.open({
+                                    text: '请先选中要插入一维码的字段',
+                                    type: 'info',
+                                    timeout: 2000
+                                });
+                                return;
+                            }
+                            insertBarcodeVisual(editor, 'barcode', fieldName);
+                        }
+                    });
+
+                    // 可合并字段标记按钮
+                    editor.ui.registry.addButton('mergefield', {
+                        icon: 'table-merge-cells',
+                        tooltip: '标记选中字段为可合并（查找相邻相同字段并提示合并）',
+                        onAction: function () {
+                            const fieldInfo = getFieldNameFromSelection(editor);
+                            if (!fieldInfo) {
+                                alert('请先选中要标记的字段');
+                                return;
+                            }
+
+                            // 检查字段是否已被标记为可合并字段
+                            if (fieldInfo.isMarked && fieldInfo.currentType === 'merge') {
+                                editor.notificationManager.open({
+                                    text: `字段 ${fieldInfo.fieldName} 已经被标记为可合并字段`,
+                                    type: 'info',
+                                    timeout: 1500
+                                });
+                                return;
+                            }
+
+                            // 用特殊标记标识为可合并字段（这里用'merge'类型，真实业务可以调整）
+                            markAsCode(editor, 'merge', fieldInfo.fieldName);
+                        }
+                    });
+
+                }
+            });
+        }
+
+        //监听提交（TinyMCE 内容在 iframe 内，需同步后再提交，否则 F_PrintContent 可能不是最新）
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            let content = tinymce.activeEditor.getContent()
+            const param = {
+                ...postData,
+                F_PrintContent: content
+            }
+
+            common.submitForm({
+                url: '/SystemManage/ModulePrint/SubmitForm?keyValue=' + keyValue,
+                param,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+</script>
+
+<script type="text/html" id="currentTableBar">
+    <a id="NF-edit" authorize class="layui-btn layui-btn-xs  layui-btn-warm" lay-event="edit">新增</a>
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <input type="hidden" id="F_ModuleId" name="F_ModuleId" value="">
+                <div class="layui-form-item">
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">编码</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" autocomplete="off" lay-verify="required"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_FullName" name="F_FullName" autocomplete="off"
+                                lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4 layui-col-sm4 layui-hide">
+                        <label class="layui-form-label required">类型</label>
+                        <div class="layui-input-block">
+                            <select id="F_PrintType" name="F_PrintType" lay-verify="required">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label required">描述</label>
+                        <div class="layui-input-block" style="display:flex">
+                            <input type="text" id="F_Description" name="F_Description" autocomplete="off"
+                                lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12">
+                        <label class="layui-form-label">编辑模板</label>
+                        <div class="layui-input-block">
+                            <!-- 富文本 + 字段面板 并排布局 -->
+                            <div class="editor-wrapper">
+                                <div class="editor-main">
+                                    <textarea id="F_PrintContent" name="F_PrintContent"></textarea>
+                                </div>
+                                <!-- 右侧字段面板 -->
+                                <div class="editor-sidebar">
+                                    <select id="dataSourceSelect" lay-filter="dataSource" lay-search>
+                                    </select>
+                                    <div class="field-list" id="fieldList">
+                                        <!-- 字段列表动态生成 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

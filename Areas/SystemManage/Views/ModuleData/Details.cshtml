@@ -1,0 +1,249 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'common', 'optimizeSelectOption', 'commonTable', 'table', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        $("#F_ModuleId").val($.request("F_ModuleId"));
+        //权限字段
+        common.authorizeFields('adminform');
+        //此处需修改
+        //类型为时间时
+        //laydate.render({
+        //elem: '#F_Birthday'
+        //, btns: ['clear', 'now']
+        //, trigger: 'click',
+        //format: 'yyyy-MM-dd',
+        //});
+        $(function () {
+            //此处需修改
+            //绑定数据源
+            //类型为下拉框时
+            $("#F_DataType").bindSelect({
+                data: top.clients.dataItems["ModuleDataType"],
+                id: ""
+            });
+
+            $("#F_ProcName").bindSelect({
+                url: "/SystemManage/CodeGenerator/GetProcTableJson",
+                id: "Name",
+                text: "Name",
+                search: true,
+            });
+            if (!!keyValue) {
+                common.ajax({
+                    url: '/SystemManage/Moduledata/GetFormJson',
+                    dataType: 'json',
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        common.setReadOnly('adminform')
+                        common.val('adminform', {
+                            ...common.val('adminform'),
+                            F_TableName: data.F_ObjectName
+                        })
+                        bindFields(data.F_ObjectName);
+                    }
+                });
+            }
+            initControl();
+            form.render();
+        });
+        wcLoading.close();
+
+        function initControl() {
+            //初始化对象数据
+            tableSelect.render({
+                elem: '#F_ObjectName',
+                checkedKey: 'Name',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_ObjectName').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/SystemManage/CodeGenerator/GetViewTableJson`,
+                    cols: [[{ type: 'radio', fixed: 'left' },
+                    { field: 'Name', title: '表视图名称' },
+                    { field: 'Description', title: '表视图备注' },
+                    {
+                        field: 'DbObjectKind', title: '类型',
+                        templet: function (d) {
+                            switch (d.DbObjectKind) {
+                                case 'Table':
+                                    return "表";
+                                case 'View':
+                                    return "视图";
+                                case 'Proc':
+                                    return "过程";
+                                case 'Func':
+                                    return "函数";
+                                default:
+                                    return "其他";
+                            }
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.Name).join(',');
+                    // 给输入框赋值
+                    $(elem).val(text.trim());
+                    common.val('adminform', {
+                        ...common.val('adminform'),
+                        F_TableName: text.trim()
+                    })
+                    bindFields(text.trim());
+                }
+            });
+
+
+        }
+
+        //绑定字段数据
+        window.bindFields = function (tableName) {
+            tableSelect.render({
+                elem: '#F_Fields',
+                checkedKey: 'F_EnCode',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_Fields').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/Public/GetReferenceListJson?enCode=GetObjectFields`,
+                    params: {
+                        F_TableName: ''
+                    },
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'F_EnCode', title: '字段' },
+                    { field: 'F_FullName', title: '名称' }
+                    ]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.F_EnCode).join(',');
+                    if (checkStatus.isAll)//如果全选，则显示*
+                        $(elem).val("*");
+                    else
+                        $(elem).val(text.trim());
+                }
+            });
+        }
+
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            common.submitForm({
+                url: '/SystemManage/Moduledata/SubmitForm?keyValue=' + keyValue,
+                param: postData,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+
+    function selectFileds() {
+        if (!$("#F_ObjectName").val()) {
+            layer.msg("请先选择对象");
+            return false;
+        }
+    }
+</script>
+
+<script type="text/html" id="currentTableBar">
+   <a id="NF-edit" authorize class="layui-btn layui-btn-xs  layui-btn-warm" lay-event="edit">新增</a>
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">数据编号</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" autocomplete="off" lay-verify="required"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">数据名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_DataName" name="F_DataName" autocomplete="off"
+                                lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">类型</label>
+                        <div class="layui-input-block">
+                            <select id="F_DataType" name="F_DataType" lay-verify="required">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">表视图名</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_ObjectName" name="F_ObjectName" autocomplete="off" readonly
+                                lay-verify="required" placeholder="点击选择" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">重命名</label>
+                        <div class="layui-input-block" style="display: flex;">
+                            <input type="text" id="F_Rename" name="F_Rename" autocomplete="off" placeholder="旧字段名|新字段名|中文标题|hide"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">字段</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Fields" name="F_Fields" autocomplete="off" onclick="selectFileds()"
+                                lay-verify="required" style="width: 95%;" placeholder="请选择" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label required">条件</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Sql" name="F_Sql" style="min-height:200px;" class="layui-textarea"
+                                lay-verify="required" placeholder="使用正常SQL语法,默认填写1=1,有前置过程时,只能填写固定参数"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label required">备注</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Description" name="F_Description" autocomplete="off"
+                                lay-verify="required" placeholder="请输入" class="layui-input">
+                            <input type="text" id="F_ModuleId" name="F_ModuleId" style="display:none" autocomplete="off"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

@@ -1,0 +1,794 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'common', 'optimizeSelectOption', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        var moduleId = $.request("moduleId");
+        var tableid = $.request("tableid");
+        //权限字段
+        common.authorizeFields('adminform');
+        $(function () {
+            $("#datatype").bindSelect({
+                url: "/SystemManage/ItemsData/GetSelectJson?enCode=DataType",
+                id: "text",
+                text: "text"
+            });
+            common.ajax({
+                url: '/SystemManage/Module/GetTreeGridJson',
+                dataType: 'json',
+                async: false,
+                success: function (res) {
+                    if (res.data) {
+                        var list = res.data.filter(item => item.F_IsExpand == false);
+                        $("#modulename").bindSelect({
+                            data: list,
+                            id: "F_EnCode",
+                            text: "F_FullName"
+                        });
+                    }
+                }
+            });
+            if (!!keyValue) {
+                $("#F_EnCode").prop("disabled", true);
+                $("#btn_SysTable").prop("disabled", true).addClass("layui-btn-disabled");
+                common.ajax({
+                    url: '/SystemManage/ModuleFields/GetTableFormJson',
+                    dataType: 'json',
+                    data: { encode: keyValue, tablename: tableid },
+                    async: false,
+                    success: function (data) {
+                        var model = JSON.parse(data.F_Template);
+                        for (var key in model) {
+                            if (model.hasOwnProperty(key)) {
+                                data[key] = model[key];
+                            }
+                        }
+                        $(`#formwidth`).val(data.formwidth || "0").trigger('change');
+                        $(`#align`).val(data.align || "");
+                        $(`#fixed`).val(data.fixed || "");
+                        $('#placeholder').val(data.placeholder || "");
+                        $(`#F_ReferType`).val(data.F_ReferType || 'false');
+                        $("#ishead").prop("checked", !!data.ishead);
+                        $("#isheadedit").prop("checked", !!data.isheadedit);
+                        $("#isheadaddverify").prop("checked", !!data.isheadaddverify);
+                        $("#isheadupdate").prop("checked", !!data.isheadupdate);
+                        $("#isheadupdateedit").prop("checked", !!data.isheadupdateedit);
+                        $("#isheadupdateverify").prop("checked", !!data.isheadupdateverify);
+                        $("#islist").prop("checked", !!data.islist);
+                        $("#islistedit").prop("checked", data.islistedit !== false);
+                        $("#islistaddverify").prop("checked", !!data.islistaddverify);
+                        $("#islistupdate").prop("checked", !!data.islistupdate);
+                        $("#islistupdateedit").prop("checked", !!data.islistupdateedit);
+                        $("#islistupdateverify").prop("checked", !!data.islistupdateverify);
+
+                        if (data.ishead) {
+                            $("#islistedit").attr("disabled", "disabled")
+                            $("#islistaddverify").attr("disabled", "disabled")
+                            $("#islistupdateedit").attr("disabled", "disabled")
+                            $("#islistupdateverify").attr("disabled", "disabled")
+                            $("#isheadedit").removeAttr("disabled")
+                            $("#isheadaddverify").removeAttr("disabled")
+                        }
+                        else {
+                            $("#isheadedit").attr("disabled", "disabled")
+                            $("#isheadaddverify").attr("disabled", "disabled")
+                        }
+
+                        if (data.isheadupdate) {
+                            $("#islistupdateedit").attr("disabled", "disabled")
+                            $("#islistupdateverify").attr("disabled", "disabled")
+                            $("#islistedit").attr("disabled", "disabled")
+                            $("#islistaddverify").attr("disabled", "disabled")
+                            $("#isheadupdateedit").removeAttr("disabled")
+                            $("#isheadupdateverify").removeAttr("disabled")
+                        }
+                        else {
+                            $("#isheadupdateedit").attr("disabled", "disabled")
+                            $("#isheadupdateverify").attr("disabled", "disabled")
+                        }
+
+                        if (data.islist) {
+                            $("#isheadedit").attr("disabled", "disabled")
+                            $("#isheadaddverify").attr("disabled", "disabled")
+                            $("#isheadupdateedit").attr("disabled", "disabled")
+                            $("#isheadupdateverify").attr("disabled", "disabled")
+                            $("#islistedit").removeAttr("disabled")
+                            $("#islistaddverify").removeAttr("disabled")
+                        }
+                        else {
+                            $("#islistedit").attr("disabled", "disabled")
+                            $("#islistaddverify").attr("disabled", "disabled")
+                        }
+
+                        if (data.islistupdate) {
+                            $("#isheadupdateedit").attr("disabled", "disabled")
+                            $("#isheadupdateverify").attr("disabled", "disabled")
+                            $("#isheadedit").attr("disabled", "disabled")
+                            $("#isheadaddverify").attr("disabled", "disabled")
+                            $("#islistupdateedit").removeAttr("disabled")
+                            $("#islistupdateverify").removeAttr("disabled")
+                        }
+                        else {
+                            $("#islistupdateedit").attr("disabled", "disabled")
+                            $("#islistupdateverify").attr("disabled", "disabled")
+                        }
+
+                        // 设置列宽输入框的显示和赋值
+                        if (data.formwidth == "1") { // 固定-显示
+                            $("#width").removeClass("hiddlen").val(data.width);
+                            $("#minWidth,#maxWidth").addClass("hiddlen");
+                        } else if (data.formwidth == "2") { // 范围
+                            $("#minWidth,#maxWidth").removeClass("hiddlen");
+                            $("#minWidth").val(data.minWidth);
+                            $("#maxWidth").val(data.maxWidth);
+                            $("#width").addClass("hiddlen");
+                        } else { // 自动
+                            $("#width,#minWidth,#maxWidth").addClass("hiddlen");
+                        }
+
+                        $("#dataname").bindSelect({
+                            url: "/SystemManage/Moduledata/GetReferenceListJson?F_DataType=3&F_EnCode=" + data["modulename"],
+                            id: "F_EnCode",
+                            text: "F_EnCode"
+                        });
+                        if (!['decimal', 'float'].includes(model["datatype"])) {
+                            $("#digits").attr("disabled", "disabled")
+                            $("#lbl_DecimalDigits").removeClass("required");
+                            $("#digits").removeAttr("lay-verify");
+                        }
+                        common.val('adminform', data);
+                        common.setReadOnly('adminform');
+                    }
+                });
+            }
+            //只有表可以编辑表头，其他都禁用
+            if (tableid.startsWith("view_") || tableid.startsWith("func_") || tableid.startsWith("proc_")) {
+                $("#ishead").attr("disabled", "disabled")
+                $("#isheadedit").attr("disabled", "disabled")
+                $("#isheadaddverify").attr("disabled", "disabled")
+                $("#isheadupdate").attr("disabled", "disabled")
+                $("#isheadupdateedit").attr("disabled", "disabled")
+                $("#isheadupdateverify").attr("disabled", "disabled")
+                $("#ishead").prop('checked', false);
+                $("#isheadedit").prop('checked', false);
+                $("#isheadaddverify").prop('checked', false);
+                $("#isheadupdate").prop('checked', false);
+                $("#isheadupdateedit").prop('checked', false);
+                $("#isheadupdateverify").prop('checked', false);
+                form.render('checkbox');
+            }
+            form.render();
+            common.ajax({
+                url: '/SystemManage/ModuleFields/GetModuleTableListJson',
+                dataType: 'json',
+                data: { encode: tableid },
+                async: false,
+                success: function (result) {
+                    var DbObjectKind = result[0].DbObjectKind.trim();
+                    if (DbObjectKind == "Table")//如果是表
+                        $("#F_IsTable").val(true);
+                }
+            });
+            $("#F_TableName").val(tableid);
+
+            // 初始隐藏所有 357-370区块
+            $("#width").addClass("hiddlen");
+            $("#minWidth").addClass("hiddlen");
+            $("#maxWidth").addClass("hiddlen");
+        });
+
+
+
+
+        //绑定参数数据
+        window.bindFields = function (tableName) {
+            tableSelect.render({
+                elem: '#params',
+                checkedKey: 'F_EnCode',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#params').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/Public/GetReferenceListJson?enCode=GetObjectFields`,
+                    params: {
+                        F_TableName: ''
+                    },
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'F_Id', title: '',hide:true },
+                    { field: 'F_EnCode', title: '字段' },
+                    { field: 'F_FullName', title: '名称' }
+                    ]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.F_EnCode).join(',');
+                    if (checkStatus.isAll)//如果全选，则显示*
+                        $(elem).val("*");
+                    else
+                        $(elem).val(text.trim());
+                }
+            });
+        }
+
+        window.reloadfields = function (datatype) {
+            if (['nvarchar', 'varchar', 'char'].includes(datatype)) {
+                $("#Length").removeClass("hiddlen");
+            } else {
+                $("#Length").addClass("hiddlen");
+            }
+            if (['decimal', 'float'].includes(datatype)) {
+                $("#digits").removeAttr("disabled");
+                $("#lbl_DecimalDigits").addClass("required");
+                $("#digits").attr("lay-verify", "required");
+            } else {
+                $("#digits").attr("disabled", "disabled")
+                $("#lbl_DecimalDigits").removeClass("required");
+                $("#digits").removeAttr("lay-verify");
+            }
+            form.render();
+        }
+
+        form.on('select(datatype)', function (data) {
+            reloadfields(data.value);
+        })
+
+        tableSelect.render({
+            elem: '#btn_SysTable',
+            checkedKey: 'F_EnCode',
+            searchKey: 'keyword',
+            searchPlaceholder: '关键词搜索',
+            width: '600px',
+            sameApi: false,
+            table: {
+                url: `/SystemManage/ModuleFields/GetSysObjectListJson?objectname=${tableid}`,
+                cols: [[{ type: 'radio', fixed: 'left' },
+                { field: 'F_EnCode', title: '名称' },
+                { field: 'F_FullName', title: '说明' },
+                { field: 'F_DataType', title: '类型' },
+                { field: 'F_Length', title: '长度' },
+                { field: 'F_DecimalDigits', title: '小数' },
+                { field: 'F_IsNullable', title: '可空' },
+                { field: 'F_IsIdentity', title: '自增' },
+                { field: 'F_DefaultValue', title: '默认' },
+                { field: 'F_ParamMode', title: '参数' }
+                ]]
+            },
+            done: function (elem, checkStatus) {
+                //选中后执行
+                var data = checkStatus.data[0];
+                $("#F_EnCode").val(data.F_EnCode);
+                $("#F_FullName").val(data.F_FullName);
+                $("#datatype").val(data.F_DataType);
+                $("#length").val(data.F_Length);
+                $("#digits").val(data.F_DecimalDigits);
+                $("#default").val(data.F_DefaultValue);
+                reloadfields(data.F_DataType);
+            }
+        });
+        wcLoading.close();
+
+        // 列宽模式切换，自动不显示输入，固定显示宽度框，范围显示最小最大框
+        // 在页面打开时默认执行一次
+        function handleFormWidthSelect(value) {
+            switch (value) {
+                case '0': // 自动
+                    $("#width").addClass("hiddlen");
+                    $("#minWidth, #maxWidth").addClass("hiddlen");
+                    break;
+                case '1': // 固定
+                    $("#widthContainer").removeClass("hiddlen");
+                    $("#width").removeClass("hiddlen");
+                    $("#minWidth, #maxWidth").addClass("hiddlen");
+                    break;
+                case '2': // 范围
+                    $("#widthContainer").removeClass("hiddlen");
+                    $("#width").addClass("hiddlen");
+                    $("#minWidth, #maxWidth").removeClass("hiddlen");
+                    break;
+            }
+        }
+
+        form.on('select(demo-radio-filter)', function (data) {
+            handleFormWidthSelect(data.value);
+        });
+
+        // 监听 ishead 复选框
+        form.on('checkbox(isheadFilter)', function (data) {
+            // 如果 ishead 被选中，则取消 islist 的选中状态
+            if (data.elem.checked) {
+                $('#islist').prop('checked', false);
+                $('#islistupdate').prop('checked', false);
+                $('#islistedit').prop('checked', false);
+                $('#islistaddverify').prop('checked', false);
+                $("#islistedit").attr("disabled", "disabled")
+                $("#islistaddverify").attr("disabled", "disabled")
+                $('#islistupdateedit').prop('checked', false);
+                $('#islistupdateverify').prop('checked', false);
+                $("#islistupdateedit").attr("disabled", "disabled")
+                $("#islistupdateverify").attr("disabled", "disabled")
+                $("#isheadedit").removeAttr("disabled")
+                $("#isheadaddverify").removeAttr("disabled")
+            }
+            else {
+                $('#isheadedit').prop('checked', false);
+                $('#isheadaddverify').prop('checked', false);
+                $("#isheadedit").attr("disabled", "disabled")
+                $("#isheadaddverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 islist 复选框
+        form.on('checkbox(islistFilter)', function (data) {
+            // 如果 islist 被选中，则取消 ishead 的选中状态
+            if (data.elem.checked) {
+                $('#ishead').prop('checked', false);
+                $('#isheadupdate').prop('checked', false);
+                $('#isheadedit').prop('checked', false);
+                $('#isheadaddverify').prop('checked', false);
+                $("#isheadedit").attr("disabled", "disabled")
+                $("#isheadaddverify").attr("disabled", "disabled")
+                $('#isheadupdateedit').prop('checked', false);
+                $('#isheadupdateverify').prop('checked', false);
+                $("#isheadupdateedit").attr("disabled", "disabled")
+                $("#isheadupdateverify").attr("disabled", "disabled")
+                $("#islistedit").removeAttr("disabled")
+                $("#islistaddverify").removeAttr("disabled")
+            }
+            else {
+                $('#islistedit').prop('checked', false);
+                $('#islistaddverify').prop('checked', false);
+                $("#islistedit").attr("disabled", "disabled")
+                $("#islistaddverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 isheadupdate 复选框
+        form.on('checkbox(isheadupdateFilter)', function (data) {
+            // 如果 ishead 被选中，则取消 islist 的选中状态
+            if (data.elem.checked) {
+                $('#islist').prop('checked', false);
+                $('#islistupdate').prop('checked', false);
+                $('#islistedit').prop('checked', false);
+                $('#islistaddverify').prop('checked', false);
+                $("#islistedit").attr("disabled", "disabled")
+                $("#islistaddverify").attr("disabled", "disabled")
+                $('#islistupdateedit').prop('checked', false);
+                $('#islistupdateverify').prop('checked', false);
+                $("#islistupdateedit").attr("disabled", "disabled")
+                $("#islistupdateverify").attr("disabled", "disabled")
+                $("#isheadupdateedit").removeAttr("disabled")
+                $("#isheadupdateverify").removeAttr("disabled")
+            }
+            else {
+                $('#isheadupdateedit').prop('checked', false);
+                $('#isheadupdateverify').prop('checked', false);
+                $("#isheadupdateedit").attr("disabled", "disabled")
+                $("#isheadupdateverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 islistupdate 复选框
+        form.on('checkbox(islistupdateFilter)', function (data) {
+            // 如果 islist 被选中，则取消 ishead 的选中状态
+            if (data.elem.checked) {
+                $('#ishead').prop('checked', false);
+                $('#isheadupdate').prop('checked', false);
+                $('#isheadedit').prop('checked', false);
+                $('#isheadaddverify').prop('checked', false);
+                $("#isheadedit").attr("disabled", "disabled")
+                $("#isheadaddverify").attr("disabled", "disabled")
+                $('#isheadupdateedit').prop('checked', false);
+                $('#isheadupdateverify').prop('checked', false);
+                $("#isheadupdateedit").attr("disabled", "disabled")
+                $("#isheadupdateverify").attr("disabled", "disabled")
+                $("#islistupdateedit").removeAttr("disabled")
+                $("#islistupdateverify").removeAttr("disabled")
+            }
+            else {
+                $('#islistupdateedit').prop('checked', false);
+                $('#islistupdateverify').prop('checked', false);
+                $("#islistupdateedit").attr("disabled", "disabled")
+                $("#islistupdateverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 页面初始时默认触发一次，以设置窗口
+        $(function () {
+            var initialFormWidth = $("#formwidth").val();
+            handleFormWidthSelect(initialFormWidth);
+        });
+
+        form.on('select(dataname)', function (data) {
+            // 获取选中的数据
+            var str = data.value
+            common.ajax({
+                type: "Get",
+                url: '/SystemManage/ModuleData/GetListJson?keyValue=' + str,
+                async: false,
+                success: function (res) {
+                    if(res != null && res.length > 0 && res[0].F_ObjectName != undefined)
+                    {
+                        bindFields(res[0].F_ObjectName)
+                    }
+                }
+            })
+        })
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            if (!postData["F_IsPublic"]) postData["F_IsPublic"] = false;
+            if (!postData["F_IsTotal"]) postData["F_IsTotal"] = false;
+            if (!postData["F_IsMerge"]) postData["F_IsMerge"] = false;
+            if (!postData["F_EnabledMark"]) postData["F_EnabledMark"] = false;
+            // if (!postData["F_IsNullable"]) postData["F_IsNullable"] = false;
+            // if (!postData["F_IsIdentity"]) postData["F_IsIdentity"] = false;
+            if (!postData["order"]) postData["order"] = false;
+            if (!postData["filter"]) postData["filter"] = false;
+            if (!postData["islist"]) postData["islist"] = false;
+            if (!postData["islistedit"]) postData["islistedit"] = false;
+            if (!postData["islistaddverify"]) postData["islistaddverify"] = false;
+            if (!postData["islistupdate"]) postData["islistupdate"] = false;
+            if (!postData["islistupdateedit"]) postData["islistupdateedit"] = false;
+            if (!postData["islistupdateverify"]) postData["islistupdateverify"] = false;
+            if (!postData["ishead"]) postData["ishead"] = false;
+            if (!postData["isheadedit"]) postData["isheadedit"] = false;
+            if (!postData["isheadaddverify"]) postData["isheadaddverify"] = false;
+            if (!postData["isheadupdate"]) postData["isheadupdate"] = false;
+            if (!postData["isheadupdateedit"]) postData["isheadupdateedit"] = false;
+            if (!postData["isheadupdateverify"]) postData["isheadupdateverify"] = false;
+
+            var json = {
+                formwidth: postData["formwidth"],
+                width: postData["width"],
+                minWidth: postData["minWidth"],
+                maxWidth: postData["maxWidth"],
+                filter: postData["filter"],
+                order: postData["order"],
+                fixed: postData["fixed"],
+                templet: postData["templet"],
+                align: postData["align"],
+                modulename: postData["modulename"],
+                dataname: postData["dataname"],
+                islist: postData["islist"] == "true",
+                islistedit: postData["islistedit"] == "true",
+                islistaddverify: postData["islistaddverify"] == "true",
+                islistupdate: postData["islistupdate"] == "true",
+                islistupdateedit: postData["islistupdateedit"] == "true",
+                islistupdateverify: postData["islistupdateverify"] == "true",
+                ishead: postData["ishead"] == "true",
+                isheadedit: postData["isheadedit"] == "true",
+                isheadaddverify: postData["isheadaddverify"] == "true",
+                isheadupdate: postData["isheadupdate"] == "true",
+                isheadupdateedit: postData["isheadupdateedit"] == "true",
+                isheadupdateverify: postData["isheadupdateverify"] == "true",
+                coltitle: postData["coltitle"],
+                params: postData["params"],
+                datatype: postData["datatype"],
+                length: postData["length"],
+                digits: postData["digits"],
+                default: postData["default"],
+                placeholder: postData["placeholder"],
+                headwidth: postData["headwidth"]
+            }
+            postData.F_Template = JSON.stringify(json);
+            postData["F_ModuleId"] = moduleId;
+            common.submitForm({
+                url: '/SystemManage/ModuleFields/SubmitForm?keyValue=' + postData["F_Id"],
+                param: postData,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+</script>
+<style>
+    .hiddlen {
+        display: none !important;
+    }
+
+    .layui-form-checked.layui-checkbox-disabled[lay-skin="primary"]>i {
+        background: linear-gradient(45deg, black, transparent) !important;
+        border-color: none !important;
+    }
+
+    .layui-form-checked.layui-checkbox-disabled[lay-skin="primary"]>div {
+        color: #5F5F5F !important;
+    }
+</style>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">编号</label>
+                        <div class="layui-input-block" style="display: flex;width: 290px;position: absolute;">
+                            <input type="text" id="F_EnCode" name="F_EnCode" maxlength="50" autocomplete="off"
+                                lay-verify="required" class="layui-input">
+                            <input type="text" id="F_Sync" name="F_Sync" value="true" maxlength="50" autocomplete="off"
+                                class="layui-input layui-hide">
+                            <input type="text" id="F_Id" name="F_Id" maxlength="50" autocomplete="off"
+                                class="layui-input layui-hide">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_FullName" name="F_FullName" maxlength="50" autocomplete="off"
+                                lay-verify="required" class="layui-input">
+                            <input type="hidden" id="F_TableName" name="F_TableName">
+                            <input type="hidden" id="F_IsTable" name="F_IsTable" value=false>
+                        </div>
+                    </div>
+                    <!-- <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label class="layui-form-label">属性</label>
+                        <div class="layui-input-block" style="width:150px">
+                            <input id="F_IsIdentity" name="F_IsIdentity" type="checkbox" style="margin-left: -32px;"
+                                value="true" title="自增">
+                            <input id="F_IsNullable" name="F_IsNullable" type="checkbox" checked value="true"
+                                lay-filter="F_IsNullable" title="可空">
+                        </div>
+                    </div> -->
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label id="lbl_DataType" class="layui-form-label required">类型</label>
+                        <div class="layui-input-block" style="width:100px;">
+                            <select id="datatype" name="datatype" lay-filter="datatype" lay-verify="required">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label id="lbl_Length" class="layui-form-label required">长度</label>
+                        <div class="layui-input-block" style="width: 100px;">
+                            <input type="text" name="length" value="0" id="length" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label id="lbl_DecimalDigits" class="layui-form-label required">小数位</label>
+                        <div class="layui-input-block" style="width: 100px;">
+                            <input type="number" name="digits" value="0" id="digits" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label class="layui-form-label" style="width: 60px !important;">默认值</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="default" name="default" style="width: 100px;margin-left: -20px;"
+                                disabled class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">表头</label>
+                        <div class="layui-input-block">
+                            <input id="ishead" name="ishead" type="checkbox" value="true" title="新增显示"
+                                lay-filter="isheadFilter">
+                            <input type="checkbox" id="isheadedit" name="isheadedit" value="true" title="新增只读">
+                            <input type="checkbox" id="isheadaddverify" name="isheadaddverify" value="true"
+                                title="新增必填">
+                            <input id="isheadupdate" name="isheadupdate" type="checkbox" value="true" title="编辑显示"
+                                lay-filter="isheadupdateFilter">
+                            <input type="checkbox" id="isheadupdateedit" name="isheadupdateedit" value="true"
+                                title="编辑只读">
+                            <input type="checkbox" id="isheadupdateverify" name="isheadupdateverify" value="true"
+                                title="编辑必填">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block" style="display:flex;">
+                            <input type="checkbox" title="宽度" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <select id="headwidth" name="headwidth" lay-search>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </div>
+                            <input type="checkbox" title="排序" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <input type="number" name="F_SortCode" value="99" id="F_SortCode" lay-verify="required"
+                                    class="layui-input">
+                            </div>
+                            <input type="checkbox" title="操作提示" checked disabled>
+                            <div style="width:100px;">
+                                <input type="text" id="placeholder" name="placeholder" style="width: 205px;"
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">表体</label>
+                        <div class="layui-input-block">
+                            <input id="islist" name="islist" type="checkbox" value="true" title="新增显示"
+                                lay-filter="islistFilter">
+                            <input type="checkbox" id="islistedit" name="islistedit" value="true" title="新增只读">
+                            <input type="checkbox" id="islistaddverify" name="islistaddverify" value="true"
+                                title="新增必填">
+                            <input id="islistupdate" name="islistupdate" type="checkbox" value="true" title="编辑显示"
+                                lay-filter="islistupdateFilter">
+                            <input type="checkbox" id="islistupdateedit" name="islistupdateedit" value="true"
+                                title="编辑只读">
+                            <input type="checkbox" id="islistupdateverify" name="islistupdateverify" value="true"
+                                title="编辑必填">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <div class="layui-input-block" style="display: flex;">
+                            <input type="checkbox" title="标题" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <select id="align" name="align" lay-search>
+                                    <option value="left" selected>居左</option>
+                                    <option value="center">居中</option>
+                                    <option value="right">居右</option>
+                                </select>
+                            </div>
+                            <input type="checkbox" title="浮动" checked disabled>
+                            <div style="width:100px;">
+                                <select id="fixed" name="fixed" lay-search>
+                                    <option value="" selected>不浮动</option>
+                                    <option value="left">左浮动</option>
+                                    <option value="right">右浮动</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block" id="widthContainer" style="display:flex;">
+                            <input type="checkbox" title="列标" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <input type="text" name="coltitle" id="coltitle" placeholder="列标名" class="layui-input">
+                            </div>
+                            <input type="checkbox" title="列宽" checked disabled>
+                            <div style="display: flex;">
+                                <div style="width:100px;">
+                                    <select id="formwidth" name="formwidth" lay-filter="demo-radio-filter">
+                                        <option value="0" selected>自动</option>
+                                        <option value="1">固定</option>
+                                        <option value="2">范围</option>
+                                    </select>
+                                </div>
+
+                                <span style="margin-right:10px"></span>
+                                <input type="number" id="width" placeholder="宽度" name="width" class="layui-input"
+                                    style="width:100px">
+                                <input type="number" id="minWidth" placeholder="最小" name="minWidth" class="layui-input"
+                                    style="width:70px">
+                                <span style="margin-right:10px"></span>
+                                <input type="number" id="maxWidth" placeholder="最大" name="maxWidth" class="layui-input"
+                                    style="width:70px">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block">
+                            <textarea id="templet" name="templet" class="layui-textarea" placeholder='列显示模版样式：
+                            var F_QuotationValidDate=data.form.F_QuotationValidDate;
+                            if(F_QuotationValidDate)
+                            {
+                            F_QuotationValidDate=new Date(F_QuotationValidDate);
+                            data.form.F_QuotationValidDate=F_QuotationValidDate.Format("yyyy-MM-dd");
+                            }
+                            else
+                            data.form.F_QuotationValidDate="";'></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">参照</label>
+                        <div class="layui-input-block" style="display:flex">
+                            <div style="width:120px;">
+                                <select id="modulename" name="modulename" lay-search lay-filter="modulename">
+                                    <option value="">选择模块</option>
+                                </select>
+                            </div>
+                            <span style="margin-right: 10px"></span>
+                            <div style="width:120px;">
+                                <select id="dataname" name="dataname" lay-search lay-filter="dataname">
+                                    <option value="">选择数据</option>
+                                </select>
+                            </div>
+                            <span style="margin-right: 17px"></span>
+                            <input type="checkbox" title="选项" checked disabled>
+                            <div style="width:80px;">
+                                <select id="F_ReferType" name="F_ReferType" lay-search>
+                                    <option value="false" selected>单选</option>
+                                    <option value="true">多选</option>
+                                </select>
+                            </div>
+                            <span style="margin-right: 17px"></span>
+                            <input type="checkbox" title="参数" checked disabled>
+                            <div style="width:167px;">
+                                @* <input type="text" name="params" id="params" placeholder="例：F_SortCode,F_Description"
+                                    class="layui-input"> *@
+                                <input type="text" id="params" name="params" autocomplete="off"
+                                       readonly style="width: 95%;" placeholder="请选择"
+                                       class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">选项</label>
+                        <div class="layui-input-block">
+                            <input id="F_IsPublic" name="F_IsPublic" type="checkbox" value="true" title="公共">
+                            <input id="F_EnabledMark" name="F_EnabledMark" type="checkbox" checked="" value="true"
+                                title="有效">
+                            <input id="order" type="checkbox" name="order" value="true" title="排序">
+                            <input id="filter" type="checkbox" name="filter" value="true" title="过滤">
+                            <input id="F_IsTotal" name="F_IsTotal" type="checkbox" value="true" title="合计">
+                            <input id="F_IsMerge" name="F_IsMerge" type="checkbox" value="true" title="合并">
+                            <!-- <input type="checkbox" id="isverify" name="isverify" value="true" title="必填"> -->
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Description" name="F_Description" class="layui-textarea"
+                                placeholder="请输入备注"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <!--
+                <div class="layui-form-item" style="text-align: right;">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block">
+                            <input type="checkbox" id="F_Sync" name="F_Sync" value="true" title="同步数据库字段">
+                        </div>
+                    </div>
+                </div>
+                -->
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

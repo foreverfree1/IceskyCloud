@@ -1,0 +1,560 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<div class="layuimini-container ">
+    <div class="layuimini-main">
+        <div class="layui-form layuimini-form" lay-filter="adminform">
+            <div class="layui-tab layui-tab-brief" lay-filter="tab" style="margin: 0px">
+                <ul class="layui-tab-title">
+                    <li class="layui-this">基本</li>
+                    <li>字段</li>
+                    <li id="btnTabTitle">按钮</li>
+                    <li>执行人</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <div class="layui-tab-item layui-show">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">节点标识</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="NodeCode" id="NodeCode" readonly lay-verify="required"
+                                       placeholder="流程编号" autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">节点名称</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="NodeName" id="NodeName" required lay-verify="required"
+                                       placeholder="节点名称" autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">驳回类型</label>
+                            <div class="layui-input-block">
+                                <select id="NodeRejectType" lay-filter="NodeRejectType" name="NodeRejectType" required lay-verify="required">
+                                    <option value="0">上一步</option>
+                                    <option value="1">第一步</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">会签方式</label>
+                            <div class="layui-input-block">
+                                <select id="NodeConfluenceType" lay-filter="NodeConfluenceType" name="NodeConfluenceType">
+                                    <option value="all">全部分支都同意</option>
+                                    <option value="one">至少一个分支同意</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">三方系统回调URL</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="ThirdPartyUrl" id="ThirdPartyUrl"
+                                       placeholder="http://www.xxxxxx.com/api/workflow/execute_callback" autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-tab-item">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">允许修改</label>
+                            <div class="layui-input-block">
+                                <div id="CanWriteFormItemIds" name="CanWriteFormItemIds"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-tab-item" id="btnTabContent">
+                        <table class="layui-hide" id="BtnTableId" lay-filter="BtnTableFilter"></table>
+                    </div>
+                    <div class="layui-tab-item">
+                        <div class="layui-form-item">
+                            <div class="layui-input-block" style="margin-left: 0px;">
+                                <select id="NodeDesignate" lay-filter="NodeDesignate" name="NodeDesignate">
+                                    <option value="ALL_USER">所有用户</option>
+                                    <option value="SPECIAL_USER">指定用户</option>
+                                    <option value="SPECIAL_ROLE">指定角色</option>
+                                    <option value="USER_MANAGER">上一级的直属上级</option>
+                                    <option value="DEPARTMENT_MANAGER">部门负责人</option>
+                                    <option value="MORE_USER_MANAGER">连续多级直属上级</option>
+                                    <option value="RUNTIME_SPECIAL_ROLE">运行时指定角色</option>
+                                    <option value="RUNTIME_SPECIAL_USER">运行时指定用户</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item" id="department">
+                            <div class="layui-input-block" style="margin-left: 0px;">
+                                <input id="currentDepart" name="currentDepart" type="checkbox" value="true" title="当前部门">
+                            </div>
+                        </div>
+                        <div class="layui-form-item" id="stoprole">
+                            <label>审批终点角色</label>
+                        </div>
+                        <div class="layui-form-item">
+                            <div class="layui-hide" id="specialrole">
+                                <div class="layui-input-block" style="margin-left: 0px;">
+                                    <table class="layui-hide" id="RoleId" lay-filter="RoleTableFilter"></table>
+                                </div>
+                            </div>
+                            <div class="layui-hide" id="departmentmanager">
+                                <div class="layui-input-block" style="margin-left: 0px;">
+                                    <table class="layui-hide" id="OrganizeId" lay-filter="OrganizeTableFilter"></table>
+                                </div>
+                            </div>
+                            <div class="layui-hide" id="specialuser">
+                                <div class="layui-input-block" style="margin-left: 0px;">
+                                    <table class="layui-hide" id="UserId" lay-filter="UserTableFilter"></table>
+                                </div>
+                            </div>
+                            <div class="layui-hide" id="alluser">
+                                <div class="layui-input-block" style="margin-left: 0px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    var FlowDesignObject, valueList, postData, F_FrmType;
+    function initForm(data) {
+        FlowDesignObject = data.FlowDesignObject;
+        valueList = data.valueList;
+        postData = data.postData;
+        F_FrmType = postData.F_FrmType;
+    }
+    layui.use(['form', 'element', 'table', 'jquery', 'common', 'optimizeSelectOption', 'xmSelect', 'commonTable'], function () {
+        var $ = layui.jquery,
+            table = layui.table,
+            common = layui.common,
+            xmSelect = layui.xmSelect,
+            form = layui.form,
+            commonTable = layui.commonTable;
+
+        var Method = $.request("Method");
+        var node = FlowDesignObject;
+        var demo1 = null;
+        var userids = '', roleids = '', orgids = '';
+
+        // 各执行人类型对应显示的面板
+        var DESIGNATE_PANELS = {
+            SPECIAL_USER: ['specialuser'],
+            SPECIAL_ROLE: ['department', 'specialrole'],
+            DEPARTMENT_MANAGER: ['department', 'departmentmanager'],
+            MORE_USER_MANAGER: ['stoprole', 'specialrole'],
+            ALL_USER: ['alluser']
+        };
+        var ALL_PANELS = ['stoprole', 'department', 'departmentmanager', 'specialrole', 'specialuser', 'alluser'];
+
+        var tmp = {
+            NodeName: node.name,
+            NodeCode: node.id,
+            NodeRejectType: "1",
+            NodeDesignate: "ALL_USER",
+            NodeConfluenceType: "all",
+            ThirdPartyUrl: "",
+            CanWriteFormItemIds: []
+        };
+
+        // ---- 工具方法 ----
+        function togglePanels(type) {
+            var showList = DESIGNATE_PANELS[type] || DESIGNATE_PANELS.ALL_USER;
+            ALL_PANELS.forEach(function (id) {
+                $('#' + id).toggleClass('layui-hide', showList.indexOf(id) === -1);
+            });
+        }
+
+        function statusTemplet(d) {
+            return d.F_EnabledMark
+                ? '<span class="layui-bg-green">正常</span>'
+                : '<span class="layui-bg-red">禁用</span>';
+        }
+
+        function checkAllRows(tableId) {
+            $('div[lay-table-id="' + tableId + '"]').find('tbody tr .layui-form-checkbox').click();
+        }
+
+        function getCheckedIds(tableId, field) {
+            return (table.checkStatus(tableId).data || []).map(function (row) {
+                return row[field];
+            });
+        }
+
+        function loadList(url, ids, renderFn) {
+            common.ajax({
+                url: url,
+                dataType: 'json',
+                data: { ids: ids || '' },
+                type: 'GET',
+                success: function (res) {
+                    renderFn(Array.isArray(res) ? res : (res.data || []));
+                },
+                error: function () {
+                    renderFn([]);
+                }
+            });
+        }
+
+        // ---- 初始化节点配置 ----
+        function initNodeInfo() {
+            togglePanels('ALL_USER');
+            if (F_FrmType != 2) {
+                $('#btnTabTitle, #btnTabContent').addClass('layui-hide');
+            }
+            if (!node.setInfo) return;
+
+            tmp = Object.assign({}, tmp, node.setInfo);
+            var data = tmp.NodeDesignateData || {};
+            var type = tmp.NodeDesignate;
+
+            form.val('adminform', { NodeDesignate: type });
+
+            if (type === 'SPECIAL_USER' && data.users && data.users.length) {
+                userids = data.users.join(',');
+                togglePanels(type);
+            } else if (type === 'SPECIAL_ROLE' && data.roles && data.roles.length) {
+                roleids = data.roles.join(',');
+                togglePanels(type);
+                form.val('adminform', { currentDepart: data.currentDepart });
+            } else if (type === 'DEPARTMENT_MANAGER') {
+                if (data.orgs && data.orgs.length) orgids = data.orgs.join(',');
+                togglePanels(type);
+                if (data.currentDepart !== undefined) {
+                    form.val('adminform', { currentDepart: data.currentDepart });
+                }
+            } else if (type === 'MORE_USER_MANAGER' && data.roles && data.roles.length) {
+                roleids = data.roles.join(',');
+                togglePanels(type);
+            } else {
+                togglePanels('ALL_USER');
+            }
+
+            if (!tmp.fields && data.fields) {
+                tmp.fields = data.fields;
+            }
+        }
+
+        // ---- 渲染方法 ----
+        function renderCanWriteFields(fieldList) {
+            //debugger;
+            fieldList = fieldList || [];
+            var xmData = fieldList.map(function (item, i) {
+                    return {
+                        value: typeof item === 'string' ? item : (item.value || item.F_EnCode || i),
+                        name: typeof item === 'string' ? item : (item.name ||  item.F_EnCode+"（"+item.F_FullName+"）" || item.F_FullName || '')
+                    };
+                });
+            var opts = {
+                el: '#CanWriteFormItemIds',
+                size:'mini',
+                data: xmData,
+                model: { type: 'relative' },
+                filterable: true,
+                toolbar: { show: true },
+            };
+            demo1 = xmSelect.render(opts);
+            if (tmp.CanWriteFormItemIds) {
+                demo1.setValue(tmp.CanWriteFormItemIds);
+            }
+        }
+
+        /* ============== 「绑定对象」(F_TableId) 分组排序 + 跨行合并 ==============
+           分组顺序：表单 → 主视图 → 主表 → 子表 → 子视图 → 其他对象 */
+        var OBJECT_ORDER = []; // 已知对象名的期望顺序，未列入的归「其他对象」排最后
+
+        // 依据模块信息（主视图 / 主表 / 子对象）生成对象顺序
+        function buildObjectOrder(module) {
+            module = module || {};
+            var order = [];
+            var add = function (list, filter) {
+                (list || '').split(',').forEach(function (name) {
+                    name = $.trim(name);
+                    if (name && order.indexOf(name) === -1 && (!filter || filter(name))) order.push(name);
+                });
+            };
+            add(module.F_MainView);                                                             // 主视图
+            add(module.F_MainTable);                                                            // 主表
+            add(module.F_SubObject, function (n) { return !/^(view_|func_|proc_)/i.test(n); }); // 子表
+            add(module.F_SubObject, function (n) { return /^view_/i.test(n); });                // 子视图
+            return order;
+        }
+
+        // 先按分组顺序、再按对象名归拢（保证同值行相邻，这是合并的前提）
+        function sortButtons(buttons) {
+            var rank = function (d) {
+                var t = $.trim(d.F_TableId || '');
+                if (!t) return -1;   // 空值 = 表单，排最前
+                var best = 9999;     // 未登记的对象归「其他对象」，排最后
+                t.split(',').forEach(function (name) {   // 兼容逗号分隔的多对象，取最优分组
+                    var i = OBJECT_ORDER.indexOf($.trim(name));
+                    if (i >= 0 && i < best) best = i;
+                });
+                return best;
+            };
+            return (buttons || []).slice().sort(function (a, b) {
+                var ta = $.trim(a.F_TableId || ''), tb = $.trim(b.F_TableId || '');
+                return rank(a) - rank(b) || (ta === tb ? 0 : (ta < tb ? -1 : 1));
+            });
+        }
+
+        // 同步取模块信息（失败返回 {}，仅影响分组排序）
+        function loadModuleInfo(moduleId) {
+            var module = null;
+            common.ajax({
+                url: '/SystemManage/Module/GetFormJson',
+                dataType: 'json',
+                data: { keyValue: moduleId },
+                type: 'GET',
+                async: false,
+                success: function (result) { module = result || null; }
+            });
+            return module || {};
+        }
+
+        // F_TableId 列跨行合并：同值连续行只保留首行单元格并设 rowspan，
+        // 其余单元格仅隐藏（保留在 DOM 中，避免 layui 列错位）
+        function mergeTableIdCells() {
+            var $view = $('#BtnTableId').next('.layui-table-view');
+            if (!$view.length) return;
+            var $tds = $view.find('.layui-table-body td[data-field="F_TableId"]');
+            if ($tds.length < 2) return;
+
+            // 幂等：先复位上一轮合并结果
+            $tds.removeAttr('rowspan').removeClass('soul-merge-hide layui-hide');
+
+            var $master = $tds.eq(0), text = $.trim($master.text());
+            $tds.slice(1).each(function () {
+                var $td = $(this), curr = $.trim($td.text());
+                if (curr === text) {
+                    $master.attr('rowspan', (parseInt($master.attr('rowspan')) || 1) + 1);
+                    $td.addClass('layui-hide soul-merge-hide');
+                } else {
+                    $master = $td;
+                    text = curr;
+                }
+            });
+        }
+
+        // 节点配置内嵌表：关闭工具栏/搜索，走 commonTable 统一渲染
+        var embedTableBase = {
+            toolbar: false,
+            defaultToolbar: [],
+            search: false,
+            page: false,
+            authorizeFields: false,
+            autoColumnWidth: true
+        };
+
+        function renderBtnTable(buttons) {
+            var savedBtns = (tmp.NodeDesignateData && tmp.NodeDesignateData.btns) || [];
+            commonTable.rendertable($.extend({}, embedTableBase, {
+                elem: '#BtnTableId',
+                id: 'BtnTableId',
+                data: buttons || [],
+                height: 'full-105',
+                cols: [[
+                    { type: 'checkbox',width:50 },
+                    {
+                        field: 'F_TableId', title: '绑定对象',
+                        // 空值代表表单按钮（对应 F_Location=3）
+                        templet: function (d) { return $.trim(d.F_TableId || '') || 'Form'; }
+                    },
+                    { field: 'F_EnCode', title: '按钮编号' },
+                    { field: 'F_FullName', title: '按钮名称' },
+                    { field: 'F_JsEvent', title: '事件' },
+                    {
+                        field: 'F_Location', title: '位置',
+                        templet: function (d) {
+                            return { 1: '初始固定', 2: '选中',3:'表单',4:'初始动态单选',5:"初始动态多选" }[d.F_Location] || '表单';
+                        }
+                    }
+                ]],
+                done: function () {
+                    if (savedBtns.length) {
+                        (table.cache['BtnTableId'] || []).forEach(function (row, index) {
+                            if (row && savedBtns.indexOf(row.F_EnCode) !== -1) {
+                                table.setRowChecked('BtnTableId', {
+                                    index: index,
+                                    checked: true
+                                });
+                            }
+                        });
+                    }
+                    // 勾选回填之后再合并单元格
+                    mergeTableIdCells();
+                }
+            }));
+        }
+
+        function renderUserTable(users) {
+            commonTable.rendertable($.extend({}, embedTableBase, {
+                elem: '#UserId',
+                id: 'UserId',
+                data: users || [],
+                height: 'full-145',
+                cols: [[
+                    { type: 'checkbox',width:50 },
+                    { field: 'F_Account', title: '账户' },
+                    { field: 'F_RealName', title: '姓名' },
+                    { field: 'F_CompanyName', title: '公司名称' },
+                    { field: 'F_OrganizeName', title: '部门名称' },
+                    { field: 'F_EnabledMark', title: '状态', templet: statusTemplet }
+                ]],
+                done: function () {
+                    if (userids) checkAllRows('UserId');
+                }
+            }));
+        }
+
+        function renderRoleTable(roles) {
+            commonTable.rendertable($.extend({}, embedTableBase, {
+                elem: '#RoleId',
+                id: 'RoleId',
+                data: roles || [],
+                height: 'full-165',
+                cols: [[
+                    { type: 'checkbox',width:50 },
+                    { field: 'F_FullName', title: '角色名称' },
+                    {
+                        field: 'F_Type', title: '角色类型',
+                        templet: function (d) {
+                            return (top.clients.dataItems['RoleType'] || {})[d.F_Type] || '';
+                        }
+                    },
+                    { field: 'F_CompanyName', title: '归属公司' },
+                    { field: 'F_EnabledMark', title: '状态', templet: statusTemplet }
+                ]],
+                done: function () {
+                    if (roleids) checkAllRows('RoleId');
+                }
+            }));
+        }
+
+        function renderOrganizeTable(orgs) {
+            commonTable.rendertreetable($.extend({}, embedTableBase, {
+                id: 'OrganizeId',
+                elem: '#OrganizeId',
+                data: orgs || [],
+                height: 'full-175',
+                cols: [[
+                    { type: 'checkbox',width:50 },
+                    { field: 'F_FullName', title: '名称' },
+                    { field: 'F_EnCode', title: '编号' },
+                    {
+                        field: 'F_CategoryId', title: '分类',
+                        templet: function (d) {
+                            return (top.clients.dataItems['OrganizeCategory'] || {})[d.F_CategoryId] || '';
+                        }
+                    },
+                    { field: 'F_ManagerName', title: '负责人' },
+                    {
+                        field: 'F_EnabledMark', title: '状态',
+                        templet: function (d) {
+                            return d.F_EnabledMark
+                                ? '<span class="layui-btn layui-btn-normal layui-btn-xs">有效</span>'
+                                : '<span class="layui-btn layui-btn-warm layui-btn-xs">无效</span>';
+                        }
+                    }
+                ]],
+                tree: {
+                    customName: { id: 'F_Id', pid: 'F_ParentId', name: 'F_FullName' },
+                    data: { isSimpleData: true, rootPid: '0' },
+                    view: { expandAllDefault: true }
+                },
+                done: function () {
+                    if (orgids) checkAllRows('OrganizeId');
+                }
+            }));
+        }
+
+        function afterFormReady() {
+            common.val('adminform', tmp);
+            if (Method === 'Details') common.setReadOnly('adminform');
+            form.render();
+            wcLoading.close();
+        }
+
+        // ---- 启动 ----
+        initNodeInfo();
+
+        loadList('/SystemOrganize/User/GetListJson', userids, renderUserTable);
+        loadList('/SystemOrganize/Role/GetSelectJson', roleids, renderRoleTable);
+        loadList('/SystemOrganize/Organize/GetTreeGridJson', orgids, renderOrganizeTable);
+
+        if (F_FrmType == 2) {
+            common.ajax({
+                url: '/SystemManage/Flowscheme/GetModuleButtonsFieldsJson',
+                dataType: 'json',
+                data: { keyValue: postData.F_FrmId },
+                type: 'GET',
+                success: function (res) {
+                    renderCanWriteFields(res.fields || []);
+                    // 取模块信息（主视图/主表/子对象）用于「绑定对象」分组排序
+                    OBJECT_ORDER = buildObjectOrder(loadModuleInfo(postData.F_FrmId));
+                    renderBtnTable(sortButtons(res.buttons || []));
+                    afterFormReady();
+                },
+                error: function () {
+                    common.modalMsg('加载模块按钮字段失败', 'error');
+                    renderCanWriteFields(valueList || []);
+                    afterFormReady();
+                }
+            });
+        } else {
+            renderCanWriteFields(valueList || []);
+            afterFormReady();
+        }
+
+        // ---- 事件绑定 ----
+        form.on('select(NodeRejectType)', function (data) { 
+            tmp.NodeRejectType = data.value;
+        });
+        form.on('select(NodeConfluenceType)', function (data) {
+            tmp.NodeConfluenceType = data.value;
+        });
+        form.on('select(NodeDesignate)', function (data) {
+            tmp.NodeDesignate = data.value;
+            togglePanels(data.value);
+            // 切换执行人类型时清空之前的选中
+            ['UserId', 'RoleId', 'OrganizeId'].forEach(function (tableId) {
+                table.setRowChecked(tableId, {
+                    index: 'all',
+                    checked: false
+                });
+            });
+        });
+
+
+        // 提供给父页面调用
+        getVal = function () {
+            var users = [], roles = [], orgs = [];
+            if (tmp.NodeDesignate === 'SPECIAL_USER') {
+                users = getCheckedIds('UserId', 'F_Id');
+            } else if (tmp.NodeDesignate === 'SPECIAL_ROLE' || tmp.NodeDesignate === 'MORE_USER_MANAGER') {
+                roles = getCheckedIds('RoleId', 'F_Id');
+            } else if (tmp.NodeDesignate === 'DEPARTMENT_MANAGER') {
+                orgs = getCheckedIds('OrganizeId', 'F_Id');
+            }
+
+            tmp.NodeRejectType = $('#NodeRejectType').val();
+            tmp.NodeConfluenceType = $('#NodeConfluenceType').val();
+            tmp.ThirdPartyUrl = $('#ThirdPartyUrl').val();
+            tmp.NodeName = $('#NodeName').val();
+            tmp.CanWriteFormItemIds = demo1 ? demo1.getValue('value') : [];
+
+            var btns = F_FrmType == 2
+                ? getCheckedIds('BtnTableId', 'F_EnCode')
+                : ((tmp.NodeDesignateData && tmp.NodeDesignateData.btns) || []);
+
+            return $.extend(tmp, {
+                NodeDesignateData: {
+                    users: users,
+                    roles: roles,
+                    orgs: orgs,
+                    currentDepart: $('#currentDepart').is(':checked'),
+                    btns: btns,
+                    fields: tmp.fields || (tmp.NodeDesignateData && tmp.NodeDesignateData.fields) || {}
+                }
+            });
+        };
+    });
+</script>

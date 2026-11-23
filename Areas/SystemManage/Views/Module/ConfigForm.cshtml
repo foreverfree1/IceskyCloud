@@ -1,0 +1,110 @@
+﻿@{
+ViewBag.Title = "Index";
+Layout = "~/Views/Shared/_Index.cshtml";
+}
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <div class="layui-tab layui-tab-brief" lay-filter="layuiconfigtab" style="display:flex;flex-wrap:wrap;align-items:center;">
+            <ul class="layui-tab-title" style="flex:1;margin-bottom:0;">
+                <li lay-id="ModuleFields" class="layui-this">模块字段</li>
+                <li lay-id="ModuleButton">模块按钮</li>
+                <li lay-id="ModuleData">模块数据</li>
+                <li lay-id="ModuleCode">模块代码</li>
+                <li lay-id="ModulePlan">模块功能</li>
+                <li lay-id="ModulePrint">打印模板</li>
+            </ul>
+            <div style="margin-right:20px;flex-shrink:0;">
+                <span id="currentModule" style="font-weight:700"></span>
+            </div>
+            <div class="layui-tab-content" style="width:100%;height:calc(100vh - 71px);padding:0">
+                <div class="layui-tab-item  layui-show">
+                    <iframe id="ModuleFields" frameborder="0" style="width:100%;"></iframe>
+                </div>
+                <div class="layui-tab-item">
+                    <iframe id="ModuleButton" frameborder="0" style="width:100%;"></iframe>
+                </div>
+                <div class="layui-tab-item">
+                    <iframe id="ModuleData" frameborder="0" style="width:100%;"></iframe>
+                </div>
+                <div class="layui-tab-item">
+                    <iframe id="ModuleCode" frameborder="0" style="width:100%;"></iframe>
+                </div>
+                <div class="layui-tab-item">
+                    <iframe id="ModulePlan" frameborder="0" style="width:100%;"></iframe>
+                </div>
+                <div class="layui-tab-item">
+                    <iframe id="ModulePrint" frameborder="0" style="width:100%;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    layui.use(['jquery', 'element'], function () {
+        var $ = layui.jquery,
+            element = layui.element;
+        //加载数据
+        wcLoading.close();
+
+        // ★ 记忆 moduleId/moduleName：URL 有参数则保存；无参数则从缓存恢复（解决刷新丢失）
+        var cacheKey = 'moduleConfig_' + window.location.pathname;
+        var moduleId = $.request("moduleId");
+        var moduleName = $.request("moduleName");
+        if (!!moduleId) {
+            sessionStorage.setItem(cacheKey, moduleId + '|' + (moduleName || ''));
+        } else {
+            var cached = sessionStorage.getItem(cacheKey) || '';
+            var parts = cached.split('|');
+            moduleId = parts[0] || '';
+            moduleName = parts[1] || '';
+        }
+        var Key = 'module_' + window.location.pathname;
+        var rowdata = top.tabParams?.["/SystemManage/Module/ConfigForm"]?.rowData;
+        if (!!rowdata) {
+            sessionStorage.setItem(Key, JSON.stringify(rowdata));
+        } else {
+            rowdata = JSON.parse(sessionStorage.getItem(Key) || '');
+        }
+        // 切换事件
+        element.on('tab(layuiconfigtab)', function (obj) {
+            var $iframe = $("#" + obj.id);
+            if ($iframe.attr('src') == undefined) {
+                var url = "/SystemManage/" + obj.id + "/Index?moduleId=" + moduleId + "&moduleName=" + moduleName;
+                $iframe.attr('src', url);
+            } else if ($iframe.length) {
+                // 检查表头第一行的th的宽度是否丢失，若有宽度为0则重载
+                var tables = $iframe[0].contentWindow.document.getElementsByTagName("table");
+                if (!tables || tables.length < 2) {
+                    return;
+                } else {
+                    var needReload = false;
+                    var table = tables[1];
+                    var thead = table.tHead || table.getElementsByTagName('thead')[0];
+                    if (thead && thead.rows.length > 0) {
+                        var ths = thead.rows[0].getElementsByTagName('th');
+                        // 过滤掉带有layui-hide的th
+                        var thArr = Array.prototype.filter.call(ths, function (th) {
+                            return !th.classList.contains('layui-hide');
+                        });
+                        var th = thArr[1];
+                        var w = parseInt(th.offsetWidth);
+                        if (!w || w < 50) {
+                            needReload = true;
+                        }
+                    }
+                    if (needReload) {
+                        $iframe[0].contentWindow.location.reload();
+                    }
+                }
+            }
+        });
+        $('#ModuleFields').on('load resize',function() {
+            $('#ModuleData,#ModuleFields,#ModuleButton,#ModulePrint,#ModulePlan,#ModuleCode').css('height', $(window).height() - 74);
+        });
+        initControl();
+        function initControl() {
+            $("#ModuleFields").attr("src", "/SystemManage/ModuleFields/Index?moduleId=" + moduleId + "&modulename=" + moduleName);
+            $("#currentModule").text(rowdata?.F_FullName);
+        }
+    });
+</script>

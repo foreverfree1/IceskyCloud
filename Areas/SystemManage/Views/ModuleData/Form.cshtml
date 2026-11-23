@@ -1,0 +1,439 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'common', 'optimizeSelectOption', 'commonTable', 'table', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            table = layui.table,
+            commonTable = layui.commonTable,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        //当前模块信息（主视图 / 子对象），用于按类型限定“表视图名”弹窗的可选对象
+        var moduleInfo = {};
+        //弹窗当前允许的对象名称集合；null 表示不限制（全部对象）
+        var currentAllowedObjects = null;
+        $("#F_ModuleId").val($.request("F_ModuleId"));
+        //权限字段
+        common.authorizeFields('adminform');
+        //此处需修改
+        //类型为时间时
+        //laydate.render({
+        //elem: '#F_Birthday'
+        //, btns: ['clear', 'now']
+        //, trigger: 'click',
+        //format: 'yyyy-MM-dd',
+        //});
+        $(function () {
+            //此处需修改
+            //绑定数据源
+            //类型为下拉框时
+            $("#F_DataType").bindSelect({
+                data: top.clients.dataItems["ModuleDataType"],
+                id: ""
+            });
+
+            $("#F_ProcName").bindSelect({
+                url: "/SystemManage/CodeGenerator/GetProcTableJson",
+                id: "Name",
+                text: "Name",
+                search: true,
+            });
+            if (!!keyValue) {
+                common.ajax({
+                    url: '/SystemManage/Moduledata/GetFormJson',
+                    dataType: 'json',
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        common.val('adminform', {
+                            ...common.val('adminform'),
+                            F_TableName: data.F_ObjectName
+                        })
+                        bindFields(data.F_ObjectName);
+                    }
+                });
+            }
+            loadModuleInfo();
+            initControl();
+            form.render();
+            //按已有类型初始化一次联动规则（编辑时类型已存在）
+            applyDataTypeRule();
+            //类型切换时重算“表视图名”可选对象与各字段的禁用/必填状态，并清空已选对象
+            form.on('select(F_DataType)', function () {
+                applyDataTypeRule(true);
+            });
+            $('#F_DataType').on('change', function () {
+                applyDataTypeRule(true);
+            });
+        });
+        wcLoading.close();
+
+        function initControl() {
+            //初始化对象数据
+            tableSelect.render({
+                elem: '#F_ObjectName',
+                checkedKey: 'Name',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_ObjectName').val().split(',').map((i) => i.trim()),
+                //每次打开弹窗前按当前类型刷新可选对象
+                beforeRender: function () {
+                    currentAllowedObjects = getAllowedObjects();
+                    return true;
+                },
+                table: {
+                    url: `/SystemManage/CodeGenerator/GetViewTableJson`,
+                    //按模块主视图 / 子对象过滤弹窗数据；不限制时原样返回
+                    parseData: function (res) {
+                        var list = Array.isArray(res) ? res : ((res && res.data) || []);
+                        if (!currentAllowedObjects) return list;
+                        var allow = {};
+                        currentAllowedObjects.forEach(function (name) {
+                            allow[String(name).toLowerCase()] = true;
+                        });
+                        return list.filter(function (item) {
+                            return allow[String((item && item.Name) || '').toLowerCase()];
+                        });
+                    },
+                    cols: [[{ type: 'radio', fixed: 'left' },
+                    { field: 'Name', title: '表视图名称' },
+                    { field: 'Description', title: '表视图备注' },
+                    {
+                        field: 'DbObjectKind', title: '类型',
+                        templet: function (d) {
+                            switch (d.DbObjectKind) {
+                                case 'Table':
+                                    return "表";
+                                case 'View':
+                                    return "视图";
+                                case 'Proc':
+                                    return "过程";
+                                case 'Func':
+                                    return "函数";
+                                default:
+                                    return "其他";
+                            }
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.Name).join(',');
+                    // 给输入框赋值
+                    $(elem).val(text.trim());
+                    //先按 DOM 刷新缓存（拿到刚写入的 F_ObjectName），再补 F_TableName；
+                    //否则 spread 会把缓存里旧的 F_ObjectName（如切类型时清空的 ''）刷回输入框，选中值被清掉
+                    syncFormCache();
+                    common.val('adminform', {
+                        ...common.val('adminform'),
+                        F_TableName: text.trim()
+                    })
+                    bindFields(text.trim());
+                }
+            });
+
+
+        }
+
+        //同步取当前模块信息（主视图 / 子对象），供“表视图名”弹窗按类型过滤
+        function loadModuleInfo() {
+            var moduleId = $.trim($('#F_ModuleId').val() || '') || $.request("F_ModuleId");
+            if (!moduleId) return;
+            common.ajax({
+                url: '/SystemManage/Module/GetFormJson',
+                dataType: 'json',
+                data: { keyValue: moduleId },
+                async: false,
+                success: function (m) {
+                    moduleInfo = m || {};
+                }
+            });
+        }
+
+        //当前选择的“类型”文本（数据字典 ModuleDataType）
+        function currentTypeText() {
+            return $.trim($('#F_DataType option:selected').text() || '');
+        }
+
+        //逗号分隔的名称串 → 数组
+        function splitNames(str) {
+            return String(str || '').split(',').map(function (s) {
+                return $.trim(s);
+            }).filter(function (s) {
+                return !!s;
+            });
+        }
+
+        /**
+         * 按类型返回“表视图名”弹窗允许的对象：
+         * 首页列表 / 表单主表 → 该模块的主视图；表单子表 → 该模块的子对象；其余 → null（不限制）
+         */
+        function getAllowedObjects() {
+            var type = currentTypeText();
+            if (type === '首页列表' || type === '表单主表') {
+                var mainView = splitNames(moduleInfo.F_MainView);
+                if (!mainView.length) {
+                    mainView = splitNames(moduleInfo.F_MainTable).map(function (t) {
+                        return 'view_' + t;
+                    });
+                }
+                return mainView;
+            }
+            if (type === '表单子表') {
+                return splitNames(moduleInfo.F_SubObject);
+            }
+            return null;
+        }
+
+        //禁用/启用输入框；禁用时一并清空（value 传 '空字符串' 或指定值）
+        function setFieldState(selector, disabled, value) {
+            var $el = $(selector);
+            if (disabled) {
+                $el.prop('disabled', true).addClass('layui-disabled');
+                $el.val(value == null ? '' : value);
+            } else {
+                $el.prop('disabled', false).removeClass('layui-disabled');
+            }
+        }
+
+        //设置/去除必填（同时处理标签上的 * 号）
+        function setFieldRequired(selector, required) {
+            var $el = $(selector);
+            var $label = $el.closest('.layui-col-md12, .layui-col-md6').find('.layui-form-label').first();
+            if (required) {
+                $el.attr('lay-verify', 'required');
+                $label.addClass('required');
+            } else {
+                $el.removeAttr('lay-verify');
+                $label.removeClass('required');
+            }
+        }
+
+        //以当前 DOM 值为准刷新 common.val 缓存。
+        //本页未加载 commonForm（$.fn.val 同步钩子），$(el).val() 不会写入缓存，
+        //直接 {...common.val('adminform')} 展开会把缓存里的旧值（如清空后的 ''、编辑回显的旧类型）刷回 DOM，
+        //导致“类型/表视图名选择后值不变”。凡是要用 common.val 回写前，先调这里。
+        function syncFormCache() {
+            var data = {};
+            $('div[lay-filter=adminform]').find('input[id],select[id],textarea[id]').each(function () {
+                data[this.id] = $(this).val();
+            });
+            common.val('adminform', data);
+            return data;
+        }
+
+        /**
+         * 类型联动规则：
+         * 首页列表：弹窗只显示主视图；重命名禁用清空；字段禁用并自动填充 *（表示全部）
+         * 表单主表：弹窗只显示主视图；重命名/字段/条件禁用清空；去除字段与条件的必填
+         * 表单子表：弹窗只显示该模块的子对象；其余同原逻辑
+         */
+        function applyDataTypeRule(isTypeChange) {
+            var type = currentTypeText();
+            var isHomeList = type === '首页列表';
+            var isFormMain = type === '表单主表';
+
+            //切换类型：重命名、字段、条件、表视图名先全部清空，后续再按新类型回填
+            //先按 DOM 刷新缓存，避免 spread 把缓存旧值（如编辑回显的旧 F_DataType）刷回控件
+            syncFormCache();
+            if (isTypeChange) {
+                common.val('adminform', {
+                    ...common.val('adminform'),
+                    F_Rename: '',
+                    F_Fields: '',
+                    F_Sql: '',
+                    F_ObjectName: '',
+                    F_TableName: ''
+                });
+            } else {
+                //编辑回显：已选对象不在允许范围内时清空，避免留下与类型不符的值
+                var allowed = getAllowedObjects();
+                if (allowed) {
+                    var current = $.trim($('#F_ObjectName').val() || '');
+                    if (current) {
+                        var lower = allowed.map(function (n) {
+                            return n.toLowerCase();
+                        });
+                        if (lower.indexOf(current.toLowerCase()) === -1) {
+                            $('#F_ObjectName').val('');
+                        }
+                    }
+                }
+            }
+
+            //重命名：首页列表、表单主表禁用并清空
+            setFieldState('#F_Rename', isHomeList || isFormMain);
+
+            if (isHomeList) {
+                //字段：禁用，自动填充 * 表示全部字段
+                setFieldState('#F_Fields', true, '*');
+            } else if (isFormMain) {
+                //字段：禁用并清空
+                setFieldState('#F_Fields', true);
+            } else {
+                //字段：恢复可编辑，切换过来时前面已清空，不保留首页列表的 *
+                setFieldState('#F_Fields', false);
+            }
+
+            //条件：仅表单主表禁用并清空
+            setFieldState('#F_Sql', isFormMain);
+
+            //必填：表单主表去除“字段”“条件”的必填，其余类型恢复
+            setFieldRequired('#F_Fields', !isFormMain);
+            setFieldRequired('#F_Sql', !isFormMain);
+
+            //联动改完 DOM 后再同步一次缓存（如首页列表给 F_Fields 填的 *），保证后续 spread 不回灌旧值
+            syncFormCache();
+        }
+
+        //绑定字段数据
+        window.bindFields = function (tableName) {
+            tableSelect.render({
+                elem: '#F_Fields',
+                checkedKey: 'F_EnCode',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_Fields').val().split(',').map((i) => i.trim()),
+                //表视图名为空时只提示，不弹出字段选择面板
+                beforeRender: function () {
+                    if (!$.trim($('#F_ObjectName').val() || '')) {
+                        layer.msg('请先选择表视图名');
+                        return false;
+                    }
+                    return true;
+                },
+                table: {
+                    url: `/Public/GetReferenceListJson?enCode=GetObjectFields`,
+                    params: {
+                        F_TableName: tableName
+                    },
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'F_EnCode', title: '字段' },
+                    { field: 'F_FullName', title: '名称' }
+                    ]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.F_EnCode).join(',');
+                    if (checkStatus.isAll)//如果全选，则显示*
+                        $(elem).val("*");
+                    else
+                        $(elem).val(text.trim());
+                }
+            });
+        }
+
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            //disabled 的输入框不会进入 data.field，这里显式补齐这三个联动字段
+            postData.F_Rename = $('#F_Rename').val() || '';
+            postData.F_Fields = $('#F_Fields').val() || '';
+            postData.F_Sql = $('#F_Sql').val() || '';
+            common.submitForm({
+                url: '/SystemManage/Moduledata/SubmitForm?keyValue=' + keyValue,
+                param: postData,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+    });
+
+</script>
+
+<script type="text/html" id="currentTableBar">
+   <a id="NF-edit" authorize class="layui-btn layui-btn-xs  layui-btn-warm" lay-event="edit">新增</a>
+</script>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">数据编号</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" autocomplete="off" lay-verify="required"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">数据名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_DataName" name="F_DataName" autocomplete="off"
+                                lay-verify="required" placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">类型</label>
+                        <div class="layui-input-block">
+                            <select id="F_DataType" name="F_DataType" lay-filter="F_DataType" lay-verify="required">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">表视图名</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_ObjectName" name="F_ObjectName" autocomplete="off" readonly
+                                lay-verify="required" placeholder="点击选择" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">重命名</label>
+                        <div class="layui-input-block" style="display: flex;">
+                            <input type="text" id="F_Rename" name="F_Rename" autocomplete="off" placeholder="旧字段名|新字段名|中文标题|hide"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">字段</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Fields" name="F_Fields" autocomplete="off"
+                                lay-verify="required" placeholder="请选择" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label required">条件</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Sql" name="F_Sql" style="min-height:200px;" class="layui-textarea"
+                                lay-verify="required" placeholder="使用正常SQL语法,默认填写1=1,有前置过程时,只能填写固定参数"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label required">备注</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Description" name="F_Description" autocomplete="off"
+                                lay-verify="required" placeholder="请输入" class="layui-input">
+                            <input type="text" id="F_ModuleId" name="F_ModuleId" style="display:none" autocomplete="off"
+                                placeholder="请输入" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

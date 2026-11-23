@@ -1,0 +1,1218 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    var currentModule = '';
+    var hasMergeField = false;
+    //当前字段是否挂在模块主表（tableid == F_MainTable）下
+    var isMainTableField = false;
+    var recross = "";//重命名后的字段
+    layui.use(['jquery', 'form', 'laydate', 'common', 'optimizeSelectOption', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        var moduleId = $.request("moduleId");
+        var tableid = $.request("tableid");
+        var F_Id = "";
+        //权限字段
+        common.authorizeFields('adminform');
+        $(function () {
+            $("#datatype").bindSelect({
+                url: "/SystemManage/ItemsData/GetSelectJson?enCode=DataType",
+                id: "text",
+                text: "text"
+            });
+            common.ajax({
+                url: '/SystemManage/Module/GetTreeGridJson',
+                dataType: 'json',
+                async: false,
+                success: function (res) {
+                    if (res.data) {
+                        var list = res.data.filter(item => item.F_IsExpand == false);
+                        $("#modulename").bindSelect({
+                            data: list,
+                            id: "F_EnCode",
+                            text: "F_FullName"
+                        });
+                    }
+                }
+            });
+            common.ajax({
+                url: '/SystemManage/Module/GetFormJson?keyValue=' + moduleId,
+                dataType: 'json',
+                async: false,
+                success: function (result) {
+                    if (result) {
+                        currentModule = result.F_Id;
+                        //tableid 等于模块主表时标记为主表字段（F_MainTable 防逗号分隔，逐个比对）
+                        isMainTableField = String(result.F_MainTable || '').split(',').some(function (s) {
+                            return $.trim(s).toLowerCase() === String(tableid || '').trim().toLowerCase();
+                        });
+                    }
+                }
+            });
+            //判断该tableid下字段是否存在合并
+            common.ajax({
+                url: '/SystemManage/ModuleFields/GetColsJson?tablename=' + tableid,
+                dataType: 'json',
+                async: false,
+                success: function (data) {
+                    if (data.length > 0) {
+                        // 判断 data 中是否存在 F_IsMerge 为 true 的项
+                        hasMergeField = data.some(item => item.F_IsMerge === true);
+                        if (hasMergeField) {
+                            $('#subtotal').removeAttr('disabled');
+                        }
+                    }
+                }
+            });
+            if (!!keyValue) {
+                $("#F_EnCode").prop("disabled", true);
+                $("#btn_SysTable").prop("disabled", true).addClass("layui-btn-disabled");
+                common.ajax({
+                    url: '/SystemManage/ModuleFields/GetTableFormJson',
+                    dataType: 'json',
+                    data: { encode: keyValue, tablename: tableid },
+                    async: false,
+                    success: function (data) {
+                        var model = JSON.parse(data.F_Template);
+                        for (var key in model) {
+                            if (model.hasOwnProperty(key)) {
+                                data[key] = model[key];
+                            }
+                        }
+                        $(`#formwidth`).val(data.formwidth || "0").trigger('change');
+                        $(`#align`).val(data.align || "");
+                        $(`#fixed`).val(data.fixed || "");
+                        $('#placeholder').val(data.placeholder || "");
+                        // $(`# F_ReferType`).val(data. F_ReferType);
+                        $("#F_IsPublic").prop("checked", !!data.F_IsPublic);
+                        $("#F_IsTotal").prop("checked", !!data.F_IsTotal);
+                        $("#F_IsMerge").prop("checked", !!data.F_IsMerge);
+                        $("#F_EnabledMark").prop("checked", !!data.F_EnabledMark);
+                        $("#order").prop("checked", !!data.order);
+                        $("#subtotal").prop("checked", !!data.subtotal);
+                        subtotal
+                        $("#filter").prop("checked", !!data.filter);
+                        $("#ignore").prop("checked", !!data.ignore);
+                        $("#ishead").prop("checked", !!data.ishead);
+                        $("#isheadedit").prop("checked", !!data.isheadedit);
+                        $("#isheadaddverify").prop("checked", !!data.isheadaddverify);
+                        $("#isheadupdate").prop("checked", !!data.isheadupdate);
+                        $("#isheadupdateedit").prop("checked", !!data.isheadupdateedit);
+                        $("#isheadupdateverify").prop("checked", !!data.isheadupdateverify);
+                        $("#islist").prop("checked", !!data.islist);
+                        $("#islistedit").prop("checked", data.islistedit !== false);
+                        $("#islistaddverify").prop("checked", !!data.islistaddverify);
+                        $("#islistupdate").prop("checked", !!data.islistupdate);
+                        $("#islistupdateedit").prop("checked", !!data.islistupdateedit);
+                        $("#islistupdateverify").prop("checked", !!data.islistupdateverify);
+
+                        if (data.ishead) {
+                            // $("#islistedit").attr("disabled", "disabled")
+                            // $("#islistaddverify").attr("disabled", "disabled")
+                            // $("#islistupdateedit").attr("disabled", "disabled")
+                            // $("#islistupdateverify").attr("disabled", "disabled")
+                            $("#isheadedit").removeAttr("disabled")
+                            $("#isheadaddverify").removeAttr("disabled")
+                        }
+                        else {
+                            $('#isheadedit').prop('checked', false);
+                            $('#isheadaddverify').prop('checked', false);
+                            $("#isheadedit").attr("disabled", "disabled")
+                            $("#isheadaddverify").attr("disabled", "disabled")
+                        }
+
+                        if (data.isheadupdate) {
+                            // $("#islistupdateedit").attr("disabled", "disabled")
+                            // $("#islistupdateverify").attr("disabled", "disabled")
+                            // $("#islistedit").attr("disabled", "disabled")
+                            // $("#islistaddverify").attr("disabled", "disabled")
+                            $("#isheadupdateedit").removeAttr("disabled")
+                            $("#isheadupdateverify").removeAttr("disabled")
+                        }
+                        else {
+                            $('#isheadupdateedit').prop('checked', false);
+                            $('#isheadupdateverify').prop('checked', false);
+                            $("#isheadupdateedit").attr("disabled", "disabled")
+                            $("#isheadupdateverify").attr("disabled", "disabled")
+                        }
+
+                        if (data.islist) {
+                            // $("#isheadedit").attr("disabled", "disabled")
+                            // $("#isheadaddverify").attr("disabled", "disabled")
+                            // $("#isheadupdateedit").attr("disabled", "disabled")
+                            // $("#isheadupdateverify").attr("disabled", "disabled")
+                            $("#islistedit").removeAttr("disabled")
+                            $("#islistaddverify").removeAttr("disabled")
+                        }
+                        else {
+                            $('#islistedit').prop('checked', false);
+                            $('#islistaddverify').prop('checked', false);
+                            $("#islistedit").attr("disabled", "disabled")
+                            $("#islistaddverify").attr("disabled", "disabled")
+                        }
+
+                        if (data.islistupdate) {
+                            // $("#isheadupdateedit").attr("disabled", "disabled")
+                            // $("#isheadupdateverify").attr("disabled", "disabled")
+                            // $("#isheadedit").attr("disabled", "disabled")
+                            // $("#isheadaddverify").attr("disabled", "disabled")
+                            $("#islistupdateedit").removeAttr("disabled")
+                            $("#islistupdateverify").removeAttr("disabled")
+                        }
+                        else {
+                            $('#islistupdateedit').prop('checked', false);
+                            $('#islistupdateverify').prop('checked', false);
+                            $("#islistupdateedit").attr("disabled", "disabled")
+                            $("#islistupdateverify").attr("disabled", "disabled")
+                        }
+
+                        //初始化数据
+                        if (data.F_ReferType?.toString() != "-1") {
+                            var datatype = data.F_ReferType == "0" || data.F_ReferType == "1" ? "5" : data.F_ReferType == "2" || data.F_ReferType == "3" ? "4" : "7"
+                            // 获取选中的数据
+                            $("#dataname").bindSelect({
+                                url: "/SystemManage/Moduledata/GetReferenceListJson?F_DataType=" + datatype + "&F_ModuleId=" + currentModule,
+                                id: "F_EnCode",
+                                text: "F_DataName"
+                            });
+                            form.render();
+                        }
+
+                        // 设置列宽输入框的显示和赋值
+                        if (data.formwidth == "1") { // 固定-显示
+                            $("#width").removeClass("hiddlen").val(data.width);
+                            $("#minWidth,#maxWidth").addClass("hiddlen");
+                        } else if (data.formwidth == "2") { // 范围
+                            $("#minWidth,#maxWidth").removeClass("hiddlen");
+                            $("#minWidth").val(data.minWidth);
+                            $("#maxWidth").val(data.maxWidth);
+                            $("#width").addClass("hiddlen");
+                        } else { // 自动
+                            $("#width,#minWidth,#maxWidth").addClass("hiddlen");
+                        }
+                        if (!['decimal', 'float'].includes(model["datatype"])) {
+                            $("#digits").attr("disabled", "disabled")
+                            $("#lbl_DecimalDigits").removeClass("required");
+                            $("#digits").removeAttr("lay-verify");
+                        }
+                        // 模板里的默认值不一定在固定五项里，先补成选项再赋值
+                        ensureDefaultOption(data["default"]);
+                        common.val('adminform', data);
+                        // 打开已有字段时，默认值框按类型恢复输入限制
+                        applyDefaultInputMode($("#datatype").val());
+                        F_Id = data.F_Id;//由于F_Id的input框值会被参数字段selectTable覆盖，所以增加了一个全局变量F_Id
+                        if (data.dataname !== "" && data.dataname !== null) {
+                            common.ajax({
+                                type: "Get",
+                                url: '/SystemManage/ModuleData/GetFormByCodeJson?F_EnCode=' + data.dataname,
+                                async: false,
+                                success: function (res) {
+                                    if (res != null && res.length > 0 && res[0].F_ObjectName != undefined) {
+                                        $("#TableName").val(res[0].F_ObjectName)
+                                        // 按模块 F_Rename 将 cross 中的旧字段名替换为新字段名
+                                        var renameList = (res[0].F_Rename || '').split(',').filter(Boolean);
+                                        if (renameList.length) {
+                                            var crossArr = ($('#cross').val() || '').split(',');
+                                            var mapped = crossArr.map(function (n) {
+                                                n = (n || '').trim();
+                                                if (!n) return n;
+                                                for (var i = 0; i < renameList.length; i++) {
+                                                    var parts = renameList[i].split('|');
+                                                    if (parts[1] && parts[1] === n) return parts[0] || n;
+                                                }
+                                                return n;
+                                            });
+                                            recross = mapped.join(',');
+                                        }
+                                        bindFields(res[0].F_ObjectName)
+                                    }
+                                }
+                            })
+                        }
+                    }
+                });
+            }
+            else {
+                $("#F_EnabledMark").prop("checked", true);//默认有效选中
+                $("#filter").prop("checked", true);//默认搜索启用
+            }
+            if (isMainTableField) {
+                //主表字段：表体、参照区块隐藏；选项只保留 公共/有效 可点，其余禁用并清空
+                $(".js-main-hide").addClass("hiddlen");
+                $("#order,#filter,#F_IsMerge,#F_IsTotal,#subtotal,#ignore")
+                    .prop("disabled", true).prop("checked", false);
+            }
+            form.render();
+            common.ajax({
+                url: '/SystemManage/ModuleFields/GetModuleTableListJson',
+                dataType: 'json',
+                data: { encode: tableid },
+                async: false,
+                success: function (result) {
+                    var DbObjectKind = result[0].DbObjectKind.trim();
+                    if (DbObjectKind == "Table")//如果是表
+                        $("#F_IsTable").val(true);
+                }
+            });
+            $("#F_TableName").val(tableid);
+
+            // 初始隐藏所有 357-370区块
+            $("#width").addClass("hiddlen");
+            $("#minWidth").addClass("hiddlen");
+            $("#maxWidth").addClass("hiddlen");
+        });
+
+        form.on('select(F_ReferType)', function (data) {
+            $("#dataname").empty();
+            // ★ 增加默认选项，避免数据为空时下拉框空白
+            $("#dataname").append("<option value=''>请选择</option>");
+            if (data.value) {
+                var datatype = data.value == "0" || data.value == "1" ? "5" : data.value == "2" || data.value == "3" ? "4" : "7"
+                // 获取选中的数据
+                $("#dataname").bindSelect({
+                    url: "/SystemManage/Moduledata/GetReferenceListJson?F_DataType=" + datatype + "&F_ModuleId=" + currentModule,
+                    id: "F_EnCode",
+                    text: "F_DataName"
+                });
+            }
+            form.render('select');
+        })
+
+        form.on('select(dataname)', function (data) {
+            // 获取选中的数据
+            var str = data.value
+            common.ajax({
+                type: "Get",
+                url: '/SystemManage/ModuleData/GetFormByCodeJson?F_EnCode=' + str,
+                async: false,
+                success: function (res) {
+                    if (res != null && res.length > 0 && res[0].F_ObjectName != undefined) {
+                        $("#params").val("")
+                        $("#cross").val("")
+                        $("#TableName").val(res[0].F_ObjectName)
+                        bindFields(res[0].F_ObjectName)
+                    }
+                }
+            })
+        })
+
+        window.selectdata = function () {
+            if ($("#dataname").val() == "") {
+                common.modalMsg("请先选择数据", "warning");
+                return false;
+            }
+        }
+
+        //绑定参数数据
+        window.bindFields = async function (tableName) {
+            const selected = await common.getMyFieldData({
+                enCode: 'GetObjectFields',
+                fieldData: { F_EnCode: $('#params').val().split(',').map((i) => i.trim()) },
+                params: { TableName: $("#TableName").val(), keyword: "" },
+                myFields: 'F_Id'
+            });
+            const selected2 = await common.getMyFieldData({
+                enCode: 'GetObjectFields',
+                fieldData: { F_EnCode: recross.split(',').map((i) => i.trim()) },
+                params: { TableName: $("#TableName").val(), keyword: "" },
+                myFields: 'F_Id'
+            });
+            tableSelect.render({
+                elem: '#params',
+                checkedKey: 'F_Id',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected,
+                table: {
+                    url: `/Public/GetReferenceListJson?enCode=GetObjectFields`,
+                    params: {
+                        TableName: ""
+                    },
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'F_Id', title: '', hide: true },
+                    { field: 'F_EnCode', title: '字段' },
+                    { field: 'F_FullName', title: '名称' }
+                    ]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.F_EnCode).join(',');
+                    $(elem).val(text.trim());
+                }
+            });
+            tableSelect.render({
+                elem: '#cross',
+                checkedKey: 'F_Id',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: selected2,
+                table: {
+                    url: `/SystemManage/ModuleFields/GetColsJson?enCode=` + $("#dataname").val(),
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'F_Id', title: '', hide: true },
+                    { field: 'F_EnCode', title: '字段' },
+                    { field: 'F_FullName', title: '名称' }
+                    ]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.F_EnCode).join(',');
+                    $(elem).val(text.trim());
+                }
+            });
+        }
+
+
+        //==============================================================
+        // 默认值：原生 layui 下拉（lay-search 可搜索）
+        // 五个固定项之外，手输的内容最多再留一条“自定义项”；改内容时删旧加新
+        //==============================================================
+        var defaultPickedInList = false; // 搜索过程中点了下拉里的项（含“请选择”），本次要落地的手输内容作废
+        var defaultPendingText = "";     // 最新敲进去、还没落地的内容；layui 关闭下拉时会把搜索框改回选中项文本，所以单独记一份
+
+        // 当前选中项的文本。占位项（value 为空）按空串算
+        function defaultSelectedText() {
+            var $opt = $("#default").find("option:selected");
+            return $opt.length && $opt.val() ? $.trim($opt.text()) : "";
+        }
+
+        function defaultInputMode() {
+            return $("#default").attr("data-numeric") || "";
+        }
+
+        // int 只留整数，decimal 只留一个小数点（都允许开头的负号），其他类型原样返回
+        function sanitizeDefaultText(text) {
+            text = text == null ? "" : String(text);
+            var mode = defaultInputMode();
+            if (!mode) return text;
+            var negative = text.charAt(0) === '-';
+            var body = negative ? text.slice(1) : text;
+            if (mode === 'decimal') {
+                var dot = body.indexOf('.');
+                body = dot < 0
+                    ? body.replace(/\D/g, '')
+                    : body.slice(0, dot).replace(/\D/g, '') + '.' + body.slice(dot + 1).replace(/\D/g, '');
+            }
+            else {
+                body = body.replace(/\D/g, '');
+            }
+            return negative ? '-' + body : body;
+        }
+
+        // 只有一个负号或小数点不算值
+        function isUsableDefaultText(text) {
+            if (!defaultInputMode()) return !!text;
+            return !!text && text !== '-' && text !== '.' && text !== '-.';
+        }
+
+        // 打开已有字段时，模板里的默认值可能不在固定五项里，先补成选项，否则下拉会显示空白
+        function ensureDefaultOption(value) {
+            var text = $.trim(value == null ? "" : String(value));
+            if (!text) return;
+            var $select = $("#default");
+            var exists = false;
+            $select.find("option").each(function () {
+                if ($.trim(this.value) === text) { exists = true; return false; }
+            });
+            if (exists) return;
+            $select.find('option[data-custom="1"]').remove();
+            $select.append($('<option data-custom="1"></option>').val(text).text(text));
+        }
+
+        // 失焦后落地：内容等于已有项就直接选中它，否则替换掉上一条自定义项
+        function commitDefaultText(typed) {
+            var $select = $("#default");
+            var text = sanitizeDefaultText($.trim(typed || ""));
+            defaultPendingText = "";
+            // 搜索过程中点了已有项/“请选择”，layui 已把输入框改写成选中项，这次不算手输。
+            // 标记只用一次：点完之后再改输入框会触发 input 重新记 pending，那时就应该正常落地
+            if (defaultPickedInList) {
+                defaultPickedInList = false;
+                return;
+            }
+            if (!text) return;
+            var matched = null;
+            $select.find("option").each(function () {
+                // 固定项的 value 是 {loginUser} 这类模板变量，手输的往往是它的文本，value/text 都要认
+                var val = $.trim(this.value), txt = $.trim($(this).text());
+                if (val && (val === text || txt === text)) { matched = this; return false; }
+            });
+            if (matched) {
+                if ($select.val() !== matched.value) {
+                    $select.val(matched.value);
+                    form.render("select");
+                }
+                return;
+            }
+            if (!isUsableDefaultText(text)) {
+                form.render("select");
+                return;
+            }
+            $select.find('option[data-custom="1"]').remove();
+            $select.append($('<option data-custom="1"></option>').val(text).text(text));
+            $select.val(text);
+            form.render("select");
+        }
+
+        // layui 渲染出来的搜索框
+        function defaultSearchInput() {
+            return $("#default").parent().find(".layui-form-select input.layui-input").first();
+        }
+
+        // 提交前兜底：搜索框里还有没落地的输入就直接写进 select。
+        // 失焦后补选项是延后 220ms 执行的，点提交时根本来不及，只能在这里同步补一次
+        function flushDefaultText() {
+            // 最后一次操作是点下拉里的项（含“请选择”），输入框里只剩选中项文本，没有要落地的手输内容
+            if (defaultPickedInList) {
+                defaultPickedInList = false;
+                defaultPendingText = "";
+                return;
+            }
+            var $input = defaultSearchInput();
+            // 优先用输入时记下的内容：失焦后 layui 会把搜索框改回选中项文本，那时 val() 已经不可信
+            var typed = $.trim(defaultPendingText);
+            if (!typed) typed = $.trim($input.length ? $input.val() : "");
+            if (!typed) return;
+            // 和当前选中项一致，说明没有新输入
+            if (typed === defaultSelectedText()) return;
+            commitDefaultText(typed);
+        }
+
+        // 按当前数据类型给默认值框设定输入模式。int 只能整数，decimal 可带小数，其余不限
+        function applyDefaultInputMode(datatype) {
+            var mode = datatype === 'decimal' ? 'decimal' : (datatype === 'int' ? 'int' : '');
+            $("#default").attr("data-numeric", mode);
+            if (!mode) return;
+            // 类型改成数字型后，已经选中的非数字值清掉
+            var text = defaultSelectedText();
+            if (text && sanitizeDefaultText(text) !== text) {
+                $("#default").val("");
+                form.render("select");
+            }
+        }
+
+        // 脚本在 body 之前，绑定要等 DOM 就绪。layui 下拉会随 form.render 重建，事件挂在父容器上做委托
+        $(function () {
+            var $wrap = $("#default").parent();
+            // 数字类型边打边过滤搜索内容，同时记下这份“还没落地”的内容。
+            // 出现 input 说明用户在打字，之前“点过下拉项”的标记要清掉，改完之后的内容才会落地
+            $wrap.on("input", ".layui-form-select input.layui-input", function () {
+                var next = sanitizeDefaultText(this.value);
+                if (next !== this.value) this.value = next;
+                defaultPendingText = $.trim(this.value);
+                defaultPickedInList = false;
+            });
+            // 直接点选已有项 / 点“请选择”时，之前手输的内容作废（选中项以 layui 写的为准）
+            form.on('select(defaultValue)', function () {
+                defaultPickedInList = true;
+                defaultPendingText = "";
+            });
+            // 失焦时把搜不到的内容补成选项。延后一点，让“点选已有项”先走完
+            $wrap.on("blur", ".layui-form-select input.layui-input", function () {
+                var typed = this.value || defaultPendingText;
+                if (!typed) return;
+                setTimeout(function () { commitDefaultText(typed); }, 220);
+            });
+        });
+
+        window.reloadfields = function (datatype) {
+            if (['nvarchar', 'varchar', 'char'].includes(datatype)) {
+                $("#Length").removeClass("hiddlen");
+            } else {
+                $("#Length").addClass("hiddlen");
+            }
+            if (['decimal', 'float'].includes(datatype)) {
+                $("#digits").removeAttr("disabled");
+                $("#lbl_DecimalDigits").addClass("required");
+                $("#digits").attr("lay-verify", "required");
+            } else {
+                $("#digits").attr("disabled", "disabled")
+                $("#lbl_DecimalDigits").removeClass("required");
+                $("#digits").removeAttr("lay-verify");
+            }
+            applyDefaultInputMode(datatype);
+            form.render();
+        }
+
+        form.on('select(datatype)', function (data) {
+            reloadfields(data.value);
+        })
+
+        tableSelect.render({
+            elem: '#btn_SysTable',
+            checkedKey: 'F_EnCode',
+            searchKey: 'keyword',
+            searchPlaceholder: '关键词搜索',
+            width: '600px',
+            sameApi: false,
+            table: {
+                url: `/SystemManage/ModuleFields/GetSysObjectListJson?objectname=${tableid}`,
+                cols: [[{ type: 'radio', fixed: 'left' },
+                { field: 'F_EnCode', title: '名称', width: 100 },
+                { field: 'F_FullName', title: '说明', width: 100 },
+                { field: 'F_DataType', title: '类型', width: 100 },
+                { field: 'F_Length', title: '长度' },
+                { field: 'F_DecimalDigits', title: '小数' },
+                { field: 'F_IsNullable', title: '可空' },
+                { field: 'F_IsIdentity', title: '自增' },
+                { field: 'F_DefaultValue', title: '默认' },
+                { field: 'F_ParamMode', title: '参数' }
+                ]]
+            },
+            done: function (elem, checkStatus) {
+                //选中后执行
+                var data = checkStatus.data[0];
+                $("#F_EnCode").val(data.F_EnCode);
+                $("#F_FullName").val(data.F_FullName);
+                $("#datatype").val(data.F_DataType);
+                $("#length").val(data.F_Length);
+                $("#digits").val(data.F_DecimalDigits);
+                // 数据库默认值不在固定五项里时，先补成自定义项再赋值
+                ensureDefaultOption(data.F_DefaultValue);
+                $("#default").val(data.F_DefaultValue);
+                reloadfields(data.F_DataType);
+            }
+        });
+        wcLoading.close();
+
+        // 列宽模式切换，自动不显示输入，固定显示宽度框，范围显示最小最大框
+        // 在页面打开时默认执行一次
+        function handleFormWidthSelect(value) {
+            switch (value) {
+                case '0': // 自动
+                    $("#width").addClass("hiddlen");
+                    $("#minWidth, #maxWidth").addClass("hiddlen");
+                    break;
+                case '1': // 固定
+                    $("#widthContainer").removeClass("hiddlen");
+                    $("#width").removeClass("hiddlen");
+                    $("#minWidth, #maxWidth").addClass("hiddlen");
+                    break;
+                case '2': // 范围
+                    $("#widthContainer").removeClass("hiddlen");
+                    $("#width").addClass("hiddlen");
+                    $("#minWidth, #maxWidth").removeClass("hiddlen");
+                    break;
+            }
+        }
+
+        form.on('select(demo-radio-filter)', function (data) {
+            handleFormWidthSelect(data.value);
+        });
+
+        // 监听 F_Total 复选框
+        form.on('checkbox(F_IsMerge)', function (data) {
+            if (!hasMergeField && data.elem.checked) {
+                $('#subtotal').removeAttr('disabled');
+                $('#F_IsTotal').prop('checked', false);
+            }
+            else if (!hasMergeField && !data.elem.checked) {
+                $('#subtotal').prop('disabled', true);
+            }
+            else if (hasMergeField && data.elem.checked) {
+                $('#F_IsTotal').prop('checked', false);
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 subtotal 复选框
+        form.on('checkbox(subtotal)', function (data) {
+            if (data.elem.checked) {
+                $('#F_IsMerge').prop('checked', false);
+            }
+            form.render('checkbox');
+        });
+
+
+
+        // 监听 F_Total 复选框
+        form.on('checkbox(F_IsTotal)', function (data) {
+            if (data.elem.checked) {
+                $('#F_IsMerge').prop('checked', false);
+                if (!hasMergeField) {
+                    $('#subtotal').prop('disabled', true);
+                }
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 ishead 复选框
+        form.on('checkbox(isheadFilter)', function (data) {
+            // 如果 ishead 被选中，则取消 islist 的选中状态
+            if (data.elem.checked) {
+                // $('#islist').prop('checked', false);
+                // $('#islistupdate').prop('checked', false);
+                // $('#islistedit').prop('checked', false);
+                // $('#islistaddverify').prop('checked', false);
+                // $("#islistedit").attr("disabled", "disabled")
+                // $("#islistaddverify").attr("disabled", "disabled")
+                // $('#islistupdateedit').prop('checked', false);
+                // $('#islistupdateverify').prop('checked', false);
+                // $("#islistupdateedit").attr("disabled", "disabled")
+                // $("#islistupdateverify").attr("disabled", "disabled")
+                $("#isheadedit").removeAttr("disabled")
+                $("#isheadaddverify").removeAttr("disabled")
+            }
+            else {
+                $('#isheadedit').prop('checked', false);
+                $('#isheadaddverify').prop('checked', false);
+                $("#isheadedit").attr("disabled", "disabled")
+                $("#isheadaddverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 islist 复选框
+        form.on('checkbox(islistFilter)', function (data) {
+            // 如果 islist 被选中，则取消 ishead 的选中状态
+            if (data.elem.checked) {
+                // $('#ishead').prop('checked', false);
+                // $('#isheadupdate').prop('checked', false);
+                // $('#isheadedit').prop('checked', false);
+                // $('#isheadaddverify').prop('checked', false);
+                // $("#isheadedit").attr("disabled", "disabled")
+                // $("#isheadaddverify").attr("disabled", "disabled")
+                // $('#isheadupdateedit').prop('checked', false);
+                // $('#isheadupdateverify').prop('checked', false);
+                // $("#isheadupdateedit").attr("disabled", "disabled")
+                // $("#isheadupdateverify").attr("disabled", "disabled")
+                $("#islistedit").removeAttr("disabled")
+                $("#islistaddverify").removeAttr("disabled")
+            }
+            else {
+                $('#islistedit').prop('checked', false);
+                $('#islistaddverify').prop('checked', false);
+                $("#islistedit").attr("disabled", "disabled")
+                $("#islistaddverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 isheadupdate 复选框
+        form.on('checkbox(isheadupdateFilter)', function (data) {
+            // 如果 ishead 被选中，则取消 islist 的选中状态
+            if (data.elem.checked) {
+                // $('#islist').prop('checked', false);
+                // $('#islistupdate').prop('checked', false);
+                // $('#islistedit').prop('checked', false);
+                // $('#islistaddverify').prop('checked', false);
+                // $("#islistedit").attr("disabled", "disabled")
+                // $("#islistaddverify").attr("disabled", "disabled")
+                // $('#islistupdateedit').prop('checked', false);
+                // $('#islistupdateverify').prop('checked', false);
+                // $("#islistupdateedit").attr("disabled", "disabled")
+                // $("#islistupdateverify").attr("disabled", "disabled")
+                $("#isheadupdateedit").removeAttr("disabled")
+                $("#isheadupdateverify").removeAttr("disabled")
+            }
+            else {
+                $('#isheadupdateedit').prop('checked', false);
+                $('#isheadupdateverify').prop('checked', false);
+                $("#isheadupdateedit").attr("disabled", "disabled")
+                $("#isheadupdateverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // 监听 islistupdate 复选框
+        form.on('checkbox(islistupdateFilter)', function (data) {
+            // 如果 islist 被选中，则取消 ishead 的选中状态
+            if (data.elem.checked) {
+                // $('#ishead').prop('checked', false);
+                // $('#isheadupdate').prop('checked', false);
+                // $('#isheadedit').prop('checked', false);
+                // $('#isheadaddverify').prop('checked', false);
+                // $("#isheadedit").attr("disabled", "disabled")
+                // $("#isheadaddverify").attr("disabled", "disabled")
+                // $('#isheadupdateedit').prop('checked', false);
+                // $('#isheadupdateverify').prop('checked', false);
+                // $("#isheadupdateedit").attr("disabled", "disabled")
+                // $("#isheadupdateverify").attr("disabled", "disabled")
+                $("#islistupdateedit").removeAttr("disabled")
+                $("#islistupdateverify").removeAttr("disabled")
+            }
+            else {
+                $('#islistupdateedit').prop('checked', false);
+                $('#islistupdateverify').prop('checked', false);
+                $("#islistupdateedit").attr("disabled", "disabled")
+                $("#islistupdateverify").attr("disabled", "disabled")
+            }
+            form.render('checkbox');
+        });
+
+        // ★ 悬停提示统一处理：所有带 data-tips 的控件，提示词同步到自身及 layui 渲染容器（select/checkbox 原生元素被隐藏）
+        var bindTips = function () {
+            $('[data-tips]').not(':checkbox').each(function () {
+                var tips = $(this).data('tips');
+                if (!tips) return;
+                // 原生控件本身：普通 input 直接可见，title 原生生效
+                $(this).attr('title', tips);
+                // layui 渲染容器：select → div.layui-form-select，checkbox → div.layui-form-checkbox
+                $(this).siblings('.layui-form-select').attr('title', tips);
+            });
+        };
+        // form.render() 会重建 layui 渲染容器，对每个带 data-tips 控件的父容器注册监听（同一父容器只注册一次）
+        $('[data-tips]').not(':checkbox').parent().each(function () {
+            if (!$(this).data('tipsObserved')) {
+                $(this).data('tipsObserved', true);
+                new MutationObserver(bindTips).observe(this, { childList: true, subtree: true });
+            }
+        });
+        bindTips();
+
+        // ★ 小计复选框悬停提示：layui 渲染后原生 input 被隐藏，需将提示词同步到自绘容器 div.layui-form-checkbox
+        var bindCheckboxTips = function () {
+            var subtips = $('#subtotal').data('tips');
+            var mergetips = $('#F_IsMerge').data('tips');
+            var totaltips = $('#F_IsTotal').data('tips');
+            var ignoretips = $('#ignore').data('tips');
+            var filtertips = $('#filter').data('tips');
+            if (subtips) {
+                $('#subtotal').next('.layui-form-checkbox').attr('title', subtips);
+            }
+            if (mergetips) {
+                $('#F_IsMerge').next('.layui-form-checkbox').attr('title', mergetips);
+            }
+            if (totaltips) {
+                $('#F_IsTotal').next('.layui-form-checkbox').attr('title', totaltips);
+            }
+            if (ignoretips) {
+                $('#ignore').next('.layui-form-checkbox').attr('title', ignoretips);
+            }
+            if (filtertips) {
+                $('#filter').next('.layui-form-checkbox').attr('title', filtertips);
+            }
+        };
+        // form.render() 会重建渲染容器（页面多处调用），用 MutationObserver 监听父容器保证每次渲染后提示词仍然生效
+        new MutationObserver(bindCheckboxTips).observe($('#subtotal').parent()[0], { childList: true, subtree: true });
+        new MutationObserver(bindCheckboxTips).observe($('#F_IsMerge').parent()[0], { childList: true, subtree: true });
+        new MutationObserver(bindCheckboxTips).observe($('#F_IsTotal').parent()[0], { childList: true, subtree: true });
+        new MutationObserver(bindCheckboxTips).observe($('#ignore').parent()[0], { childList: true, subtree: true });
+        new MutationObserver(bindCheckboxTips).observe($('#filter').parent()[0], { childList: true, subtree: true });
+        bindCheckboxTips();
+
+
+        // 页面初始时默认触发一次，以设置窗口
+        $(function () {
+            var initialFormWidth = $("#formwidth").val();
+            handleFormWidthSelect(initialFormWidth);
+        });
+
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            // data.field 是点击瞬间取的，搜索框里刚输的内容还没进 select，先落地再取一次值
+            flushDefaultText();
+            var postData = data.field;
+            postData["default"] = $("#default").val();
+            ['F_IsPublic', 'F_IsTotal', 'F_IsMerge', 'F_EnabledMark', 'order', 'filter', 'subtotal', 'ignore',
+                'islist', 'islistedit', 'islistaddverify', 'islistupdate', 'islistupdateedit', 'islistupdateverify',
+                'ishead', 'isheadedit', 'isheadaddverify', 'isheadupdate', 'isheadupdateedit', 'isheadupdateverify'
+            ].forEach(function (k) {
+                postData[k] = !!postData[k];
+            });
+
+            var json = {
+                formwidth: postData["formwidth"],
+                width: postData["width"],
+                minWidth: postData["minWidth"],
+                maxWidth: postData["maxWidth"],
+                filter: postData["filter"],
+                subtotal: postData["subtotal"],
+                ignore: postData["ignore"],
+                order: postData["order"],
+                fixed: postData["fixed"],
+                templet: postData["templet"],
+                align: postData["align"],
+                modulename: postData["modulename"],
+                dataname: postData["dataname"],
+                islist: postData["islist"],
+                islistedit: postData["islistedit"],
+                islistaddverify: postData["islistaddverify"],
+                islistupdate: postData["islistupdate"],
+                islistupdateedit: postData["islistupdateedit"],
+                islistupdateverify: postData["islistupdateverify"],
+                ishead: postData["ishead"],
+                isheadedit: postData["isheadedit"],
+                isheadaddverify: postData["isheadaddverify"],
+                isheadupdate: postData["isheadupdate"],
+                isheadupdateedit: postData["isheadupdateedit"],
+                isheadupdateverify: postData["isheadupdateverify"],
+                coltitle: postData["coltitle"],
+                params: postData["params"],
+                cross: postData["cross"],
+                datatype: postData["datatype"],
+                length: postData["length"],
+                digits: postData["digits"],
+                default: postData["default"],
+                placeholder: postData["placeholder"],
+                headwidth: postData["headwidth"]
+            }
+            postData.F_Template = JSON.stringify(json);
+            postData["F_ModuleId"] = moduleId;
+            common.submitForm({
+                url: '/SystemManage/ModuleFields/SubmitForm?keyValue=' + F_Id,
+                param: postData,
+                success: function () {
+                    common.parentreload('data-search-btn');
+                }
+            })
+            return false;
+        });
+
+        // 回车键触发保存：仅作用于表单内的 input/select（textarea 仍可换行）
+        $('.layuimini-form').on('keydown', 'input, select', function (e) {
+            if (e.keyCode === 13 || e.which === 13) {
+                e.preventDefault();
+                $('#submit').trigger('click');
+            }
+        });
+    });
+</script>
+<style>
+    .hiddlen {
+        display: none !important;
+    }
+
+    .layui-form-checked.layui-checkbox-disabled[lay-skin="primary"]>i {
+        background: linear-gradient(45deg, black, transparent) !important;
+        border-color: none !important;
+    }
+
+    .layui-form-checked.layui-checkbox-disabled[lay-skin="primary"]>div {
+        color: #5F5F5F !important;
+    }
+</style>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">编号</label>
+                        <div class="layui-input-block" style="display: flex;width: 290px;position: absolute;">
+                            <input type="text" id="F_EnCode" name="F_EnCode" readonly maxlength="50" autocomplete="off"
+                                lay-verify="required" class="layui-input">
+                            <input type="text" id="F_Sync" name="F_Sync" value="true" maxlength="50" autocomplete="off"
+                                class="layui-input layui-hide">
+                            <input type="text" id="F_Id" name="F_Id" maxlength="50" autocomplete="off"
+                                class="layui-input layui-hide">
+                            <input type="button" id="btn_SysTable" title="对象只能新增，不能修改" class="layui-btn layui-btn-sm"
+                                style="margin-left: 10px;width: 100px;" value="对象参照">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_FullName" name="F_FullName" maxlength="6" autocomplete="off"
+                                lay-verify="required" class="layui-input">
+                            <input type="hidden" id="F_TableName" name="F_TableName">
+                            <input type="hidden" id="TableName" name="TableName">
+                            <input type="hidden" id="F_IsTable" name="F_IsTable" value=false>
+                        </div>
+                    </div>
+                    <!-- <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label class="layui-form-label">属性</label>
+                        <div class="layui-input-block" style="width:150px">
+                            <input id="F_IsIdentity" name="F_IsIdentity" type="checkbox" style="margin-left: -32px;"
+                                value="true" title="自增">
+                            <input id="F_IsNullable" name="F_IsNullable" type="checkbox" checked value="true"
+                                lay-filter="F_IsNullable" title="可空">
+                        </div>
+                    </div> -->
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label id="lbl_DataType" class="layui-form-label required">类型</label>
+                        <div class="layui-input-block" style="width:100px;">
+                            <select id="datatype" name="datatype" lay-filter="datatype" lay-verify="required">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label id="lbl_Length" class="layui-form-label required">长度</label>
+                        <div class="layui-input-block" style="width: 100px;">
+                            <input type="text" name="length" value="0" id="length" lay-verify="required"
+                                placeholder="图片类型每50长度表示一张" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label id="lbl_DecimalDigits" class="layui-form-label required">小数位</label>
+                        <div class="layui-input-block" style="width: 100px;">
+                            <input type="number" name="digits" value="0" id="digits" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md3 layui-col-sm3 layui-hide">
+                        <label class="layui-form-label" style="width: 60px !important;">默认值</label>
+                        <!-- 这一列右边就是表单边界，layer 默认的 110px 缩进会把下拉挤到 60px 左右，这里单独左移放宽 -->
+                        <div class="layui-input-block" style="margin-left: 90px!important;width: 96px;">
+                            <!-- 原生 layui 下拉，lay-search 可搜索；搜不到的内容失焦后补成一条自定义选项 -->
+                            <select id="default" name="default" lay-search lay-filter="defaultValue" style="width: 110px;">
+                                <option value="">自定义</option>
+                                <option value="{loginUser}">登录用户</option>
+                                <option value="{loginOrg}">登录部门</option>
+                                <option value="{loginRole}">登录角色</option>
+                                <option value="{currentDatetime}">当前时间</option>
+                                <option value="{currentDate}">当前日期</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">表头</label>
+                        <div class="layui-input-block">
+                            <input id="ishead" name="ishead" type="checkbox" value="true" title="新增显示"
+                                lay-filter="isheadFilter">
+                            <input type="checkbox" id="isheadedit" name="isheadedit" value="true" title="新增只读">
+                            <input type="checkbox" id="isheadaddverify" name="isheadaddverify" value="true"
+                                title="新增必填">
+                            <input id="isheadupdate" name="isheadupdate" type="checkbox" value="true" title="编辑显示"
+                                lay-filter="isheadupdateFilter">
+                            <input type="checkbox" id="isheadupdateedit" name="isheadupdateedit" value="true"
+                                title="编辑只读">
+                            <input type="checkbox" id="isheadupdateverify" name="isheadupdateverify" value="true"
+                                title="编辑必填">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block" style="display:flex;">
+                            <input type="checkbox" title="宽度" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <select id="headwidth" name="headwidth" lay-search>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </div>
+                            <input type="checkbox" title="排序" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <input type="number" name="F_SortCode" value="99" id="F_SortCode" lay-verify="required"
+                                    class="layui-input">
+                            </div>
+                            <input type="checkbox" title="操作提示" checked disabled>
+                            <div style="width:100px;">
+                                <input type="text" id="placeholder" name="placeholder" style="width: 197px;"
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item js-main-hide">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">表体</label>
+                        <div class="layui-input-block">
+                            <input id="islist" name="islist" type="checkbox" value="true" title="新增显示"
+                                lay-filter="islistFilter">
+                            <input type="checkbox" id="islistedit" name="islistedit" value="true" title="新增只读">
+                            <input type="checkbox" id="islistaddverify" name="islistaddverify" value="true"
+                                title="新增必填">
+                            <input id="islistupdate" name="islistupdate" type="checkbox" value="true" title="编辑显示"
+                                lay-filter="islistupdateFilter">
+                            <input type="checkbox" id="islistupdateedit" name="islistupdateedit" value="true"
+                                title="编辑只读">
+                            <input type="checkbox" id="islistupdateverify" name="islistupdateverify" value="true"
+                                title="编辑必填">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item js-main-hide">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <div class="layui-input-block" style="display: flex;">
+                            <input type="checkbox" title="标题" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <select id="align" name="align" lay-search data-tips="列标题名的位置">
+                                    <option value="left" selected>居左</option>
+                                    <option value="center">居中</option>
+                                    <option value="right">居右</option>
+                                </select>
+                            </div>
+                            <input type="checkbox" title="浮动" checked disabled>
+                            <div style="width:100px;">
+                                <select id="fixed" name="fixed" lay-search data-tips="列固定位置">
+                                    <option value="" selected>不浮动</option>
+                                    <option value="left">左浮动</option>
+                                    <option value="right">右浮动</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item js-main-hide">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block" id="widthContainer" style="display:flex;">
+                            <input type="checkbox" title="列标" checked disabled>
+                            <div style="width:100px; margin-right: 18px">
+                                <input type="text" name="coltitle" id="coltitle" data-tips="相同列标自动生成双层表头"
+                                    placeholder="列标名" class="layui-input">
+                            </div>
+                            <input type="checkbox" title="列宽" checked disabled>
+                            <div style="display: flex;">
+                                <div style="width:100px;">
+                                    <select id="formwidth" name="formwidth" lay-filter="demo-radio-filter">
+                                        <option value="0" selected>自动</option>
+                                        <option value="1">固定</option>
+                                        <option value="2">范围</option>
+                                    </select>
+                                </div>
+
+                                <span style="margin-right:10px"></span>
+                                <input type="number" id="width" placeholder="宽度" name="width" class="layui-input"
+                                    style="width:100px">
+                                <input type="number" id="minWidth" placeholder="最小" name="minWidth" class="layui-input"
+                                    style="width:70px">
+                                <span style="margin-right:10px"></span>
+                                <input type="number" id="maxWidth" placeholder="最大" name="maxWidth" class="layui-input"
+                                    style="width:70px">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item js-main-hide">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block">
+                            <textarea id="templet" name="templet" class="layui-textarea" placeholder='列显示模版样式：
+                            var F_QuotationValidDate=data.form.F_QuotationValidDate;
+                            if(F_QuotationValidDate)
+                            {
+                            F_QuotationValidDate=new Date(F_QuotationValidDate);
+                            data.form.F_QuotationValidDate=F_QuotationValidDate.Format("yyyy-MM-dd");
+                            }
+                            else
+                            data.form.F_QuotationValidDate="";'></textarea>
+                        </div>
+                    </div>
+                </div>
+                <!-- <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">过滤</label>
+                        <div class="layui-input-block">
+                            <input id="filter" type="checkbox" name="filter" value="true" title="启用" lay-filter="filter"
+                                data-tips="启用后开启字段过滤功能">
+                            <input id="filterverify" type="checkbox" name="filterverify" value="true" title="条件必填"
+                                data-tips="搜索条件必须填写">
+                        </div>
+                    </div>
+                </div> -->
+                <div class="layui-form-item js-main-hide">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">参照</label>
+                        <div class="layui-input-block" style="display:flex;">
+                            <input type="checkbox" title="类型" checked disabled>
+                            <div style="width:210px;">
+                                <select id="F_ReferType" name="F_ReferType" lay-filter="F_ReferType" lay-search>
+                                    <option value="">请选择</option>
+                                    <option value="0">TableSelect单选</option>
+                                    <option value="1">TableSelect多选</option>
+                                    <option value="2">Select单选</option>
+                                    <option value="3">Select多选</option>
+                                    <option value="4">TableTree单选</option>
+                                    <option value="5">TableTree多选</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide" style="margin-left: -75px;width: 455px;">
+                        <div class="layui-input-block" style="display:flex">
+                            <input type="checkbox" title="参数字段" checked disabled>
+                            <div style="width:255px;">
+                                <input type="text" name="params" id="params" data-tips="表单上用于参照条件的模块主视图字段名"
+                                    onclick="selectdata()" readonly placeholder="请选择" class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide" style="margin-top:5px;">
+                        <div class="layui-input-block" style="display:flex;">
+                            <input type="checkbox" title="数据" checked disabled>
+                            <div style="width:210px;">
+                                <select id="dataname" name="dataname" lay-search lay-filter="dataname">
+                                    <option value="">请选择</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide" style="margin-left: -75px;width: 455px;margin-top:5px;">
+                        <div class="layui-input-block" style="display:flex">
+                            <input type="checkbox" title="参考字段" checked disabled>
+                            <div style="width:255px;">
+                                <input type="text" name="cross" id="cross" data-tips="选择数据主字段后自动带出的用于查看的字段"
+                                    onclick="selectdata()" readonly placeholder="请选择" class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">选项</label>
+                        <div class="layui-input-block">
+                            <input id="F_IsPublic" name="F_IsPublic" type="checkbox" value="true" title="公共">
+                            <input id="F_EnabledMark" name="F_EnabledMark" type="checkbox" value="true" title="有效">
+                            <input id="order" type="checkbox" name="order" value="true" title="排序">
+                            <input id="filter" type="checkbox" name="filter" value="true" title="过滤">
+                            <input id="F_IsMerge" name="F_IsMerge" type="checkbox" value="true" lay-filter="F_IsMerge"
+                                title="合并" data-tips="合并列无法合计">
+                            <input id="F_IsTotal" name="F_IsTotal" type="checkbox" value="true" lay-filter="F_IsTotal"
+                                title="合计" data-tips="合计列无法合并">
+                            <input id="subtotal" name="subtotal" type="checkbox" value="true" disabled
+                                lay-filter="subtotal" title="小计" data-tips="需有合计列，按首个合并列分组小计">
+
+
+                            <input id="ignore" name="ignore" type="checkbox" value="true" lay-filter="ignore" title="忽略"
+                                data-tips="忽略字段不参与表单提交">
+
+                            <!-- <input type="checkbox" id="isverify" name="isverify" value="true" title="必填"> -->
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block">
+                            <textarea id="F_Description" name="F_Description" class="layui-textarea"
+                                placeholder="请输入备注"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <!--
+                <div class="layui-form-item" style="text-align: right;">
+                    <div class="layui-col-md12 layui-col-sm12 layui-hide">
+                        <label class="layui-form-label"></label>
+                        <div class="layui-input-block">
+                            <input type="checkbox" id="F_Sync" name="F_Sync" value="true" title="同步数据库字段">
+                        </div>
+                    </div>
+                </div>
+                -->
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

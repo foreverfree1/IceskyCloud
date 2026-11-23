@@ -1,0 +1,965 @@
+<script>
+    // 成品发货明细查询：单表 view_fgout_detail
+    // 修改内容：去掉「汇总查询」Tab 和第二张表 view_fgin_detail，以及 loadTab / TAB_TABLES 双表封装
+    // 查询、排序、小计、超链接、修改打印品名 逻辑与原来一致
+    layui.use(['jquery', 'form', 'layer', 'table', 'commonTable', 'common', 'eipTableEdit'], function () {
+        var $ = layui.$,
+            form = layui.form,
+            table = layui.table,
+            layer = layui.layer,
+            commonTable = layui.commonTable,
+            common = layui.common,
+            eipTableEdit = layui.eipTableEdit;
+
+        sessionStorage.removeItem(window.location.pathname + '_key');
+        window.ToolClick = function (obj) { eval(common.clickTools(obj)); };
+        common.authorizeFields('adminform');
+
+        var listUrl = '/Public/GetTableJson';
+        // 对话框字段：发货单号 F_OutOrderNo，打印品名 F_PrintMatName
+        var PRINT_NAME_FIELD = 'F_PrintMatName';
+        var OUT_ORDER_NO_FIELD = 'F_OutOrderNo';
+        // UpdateIndex 保存：后台字段 F_MatName2；主键字段名预留，填例如 F_Id
+        var PRINT_NAME_SAVE_FIELD = 'F_MatName2';
+        var PRINT_NAME_ID_FIELD = 'F_DetailId';
+        var CUS_NAME_FIELD = 'F_CusName';
+        var MAT_NAME_FIELD = 'F_MatName';
+        // 本页当前数据（不含小计行）和接口返回的分页总数
+        var listState = { rawList: [], serverCount: 0 };
+        var lastClickRow = null;
+        var pnCtx = null;
+        var dirtyPrintRows = [];
+
+        // 超链接列：enCode 表格编码；field 显示列；url 路径或行字段名；Id 主键列，写 obj 表示整行传入
+        var linkFieldConfig = [
+            { enCode: 'view_fgout_detail', field: 'F_ProcessCode', url: '/Module/FginDetail/Form', Id: 'obj' },
+            { enCode: 'view_fgout_detail', field: 'F_OutOrderNo', url: '/Module/FginDetail/Form', Id: 'obj' },
+            { enCode: 'view_fgout_detail', field: 'F_OrderCode', url: '/Module/FginDetail/Form', Id: 'obj' },
+        ];
+
+        // ---------- 行取值 ----------
+        function pickRowField(row, name) {
+            if (!row || !name) return '';
+            var v = row[name];
+            if (v == null || v === '') v = row._raw ? row._raw[name] : v;
+            if (v && typeof v === 'object') {
+                v = (v.value != null && v.value !== '') ? v.value : (v.displayValue || '');
+            }
+            return v == null || v === '' ? '' : String(v);
+        }
+        function pickSaveKey(row) {
+            var name = $.trim(PRINT_NAME_ID_FIELD);
+            if (!name) return '';
+            return pickRowField(row, name);
+        }
+        function flattenRow(src) {
+            var out = {};
+            if (!src) return out;
+            Object.keys(src).forEach(function (k) {
+                if (k.indexOf('LAY_') === 0) return;
+                var v = pickRowField(src, k);
+                if (v !== '') out[k] = v;
+            });
+            return out;
+        }
+        function dataRows(list) {
+            return (list || []).filter(function (r) { return r && !$.isArray(r) && r._isSubTotal !== true; });
+        }
+        function firstExistField(list, names) {
+            var n, i;
+            for (n = 0; n < names.length; n++) {
+                for (i = 0; i < (list || []).length; i++) {
+                    if (list[i] && !list[i]._isSubTotal && pickRowField(list[i], names[n]) !== '') return names[n];
+                }
+            }
+            return '';
+        }
+        function firstKey(row, names) {
+            var i, n;
+            for (i = 0; i < names.length; i++) {
+                n = names[i];
+                if (row && Object.prototype.hasOwnProperty.call(row, n)) return n;
+            }
+            for (i = 0; i < names.length; i++) {
+                if (pickRowField(row, names[i]) !== '') return names[i];
+            }
+            return names[0];
+        }
+
+        // ---------- 超链接列 ----------
+        function resolveLinkUrl(ruleUrl, row) {
+            var s = $.trim(ruleUrl || '');
+            if (/^(https?:)?\/\//i.test(s) || /^(\/|\.\/|\.\.\/)/.test(s) || s.indexOf('/') >= 0) return s;
+            return pickRowField(row, s) || pickRowField(row, 'F_URL') || pickRowField(row, 'F_Url');
+        }
+        function bindLinkColumn(col, config) {
+            var fieldEnCode = (col._raw && col._raw.F_EnCode) || '';
+            var rule = null;
+            var i;
+            for (i = 0; i < linkFieldConfig.length; i++) {
+                if (linkFieldConfig[i].field === col.field || linkFieldConfig[i].field === fieldEnCode) {
+                    rule = linkFieldConfig[i];
+                    break;
+                }
+            }
+            if (!rule) return;
+            col.event = '';
+            col.escape = false;
+            if (config) config.disabled = true;
+            col.templet = function (d) {
+                if (d && d._isSubTotal) return '';
+                var text = pickRowField(d, rule.field) || pickRowField(d, col.field) || pickRowField(d, fieldEnCode);
+                if (!text) return '';
+                var openUrl = resolveLinkUrl(rule.url, d);
+                var passObj = String(rule.Id || '').toLowerCase() === 'obj';
+                var keyValue = passObj
+                    ? (pickRowField(d, 'F_Id') || pickRowField(d, 'F_CardId') || pickRowField(d, 'F_PrimaryId'))
+                    : (pickRowField(d, rule.Id) || pickRowField(d, 'F_Id') || pickRowField(d, 'F_CardId') || pickRowField(d, 'F_PrimaryId'));
+                var texts = text.split(',');
+                var ids = String(keyValue || '').split(',');
+                var html = [];
+                var j, one;
+                for (j = 0; j < texts.length; j++) {
+                    one = $.trim(texts[j]);
+                    if (!one) continue;
+                    html.push(
+                        '<a href="javascript:;" class="process-open-link"'
+                        + ' data-url="' + common.escapeHtml(openUrl) + '"'
+                        + ' data-key="' + common.escapeHtml($.trim(ids[j] || '')) + '"'
+                        + ' data-pass="' + (passObj ? 'obj' : '') + '"'
+                        + ' data-table="view_fgout_detail"'
+                        + '>' + common.escapeHtml(one) + '</a>'
+                    );
+                }
+                return html.join(',');
+            };
+        }
+        function getClickRow($a) {
+            var $view = $a.closest('.layui-table-view');
+            var tableId = $a.attr('data-table') || $view.attr('lay-table-id') || $view.attr('lay-id') || '';
+            var index = $a.closest('tr').data('index');
+            return (table.cache[tableId] || [])[index] || null;
+        }
+
+        // ---------- 小计 / 排序 ----------
+        function subtotalMode() {
+            return $('input[name="ocSubtotal"]:checked').val() || 'all';
+        }
+        function eachTableCol(fn) {
+            var bags = [(tableOpt.cols) || []];
+            try {
+                var live = (table.getOptions(tableOpt.id) || {}).cols;
+                if (live) bags.push(live);
+            } catch (e) { }
+            bags.forEach(function (cols) {
+                (cols || []).forEach(function (row) {
+                    (Array.isArray(row) ? row : [row]).forEach(function (col) {
+                        if (col) fn(col);
+                    });
+                });
+            });
+        }
+        function colFlag(col, name) {
+            var raw = col._raw || {};
+            var v = raw[name];
+            if (v === true || v === 1 || v === '1' || v === 'true') return true;
+            if (name === 'F_IsTotal' && (col.totalRow === true || col.totalRow === '合计') && col.field && col.type !== 'checkbox' && col.type !== 'radio' && col.type !== 'numbers') {
+                return col.totalRow === true;
+            }
+            return false;
+        }
+        // 全部：按模块「合并」列；客户 / 客户＋品名：固定 F_CusName / F_MatName
+        function subtotalGroupFields(list) {
+            var mode = subtotalMode();
+            var merge = [], seen = {};
+            if (mode === 'customer') return [CUS_NAME_FIELD];
+            if (mode === 'product') return [CUS_NAME_FIELD, MAT_NAME_FIELD];
+            eachTableCol(function (col) {
+                var name = col.field || (col._raw && col._raw.F_EnCode);
+                if (!name || seen[name] || !colFlag(col, 'F_IsMerge')) return;
+                seen[name] = true;
+                merge.push(name);
+            });
+            return merge;
+        }
+        function subtotalTotalFields() {
+            var fields = [], seen = {};
+            eachTableCol(function (col) {
+                var name = col.field || (col._raw && col._raw.F_EnCode);
+                if (!name || seen[name]) return;
+                if (!colFlag(col, 'F_IsTotal') && col.totalRow !== true) return;
+                if (col.type === 'checkbox' || col.type === 'radio' || col.type === 'numbers') return;
+                seen[name] = true;
+                fields.push(name);
+            });
+            return fields;
+        }
+        function insertSubTotal(list, groupFields, totalFields) {
+            var result = [];
+            var group = [];
+            var lastKey = '';
+            if (!groupFields || !groupFields.length) return list;
+            totalFields = totalFields || [];
+            function rowKey(row) {
+                return groupFields.map(function (f) { return pickRowField(row, f); }).join('\u0001');
+            }
+            function flush() {
+                var sub, i, sum, num;
+                if (!group.length) return;
+                result = result.concat(group);
+                sub = $.extend({}, group[group.length - 1]);
+                Object.keys(sub).forEach(function (k) {
+                    if (k !== 'LAY_INDEX' && k !== 'LAY_NUM') sub[k] = '';
+                });
+                for (i = 0; i < totalFields.length; i++) {
+                    sum = group.reduce(function (total, row) {
+                        num = Number(pickRowField(row, totalFields[i]));
+                        return isNaN(num) ? total : total + num;
+                    }, 0);
+                    sub[totalFields[i]] = '\u200B' + sum.toFixed(2);
+                }
+                sub[groupFields[0]] = '小计';
+                sub._isSubTotal = true;
+                result.push(sub);
+                group = [];
+            }
+            list.forEach(function (row) {
+                var key;
+                if (!row || row._isSubTotal) return;
+                key = rowKey(row);
+                if (group.length && key !== lastKey) flush();
+                group.push(row);
+                lastKey = key;
+            });
+            flush();
+            return result;
+        }
+        function withSubTotal(list) {
+            var rows = dataRows(list);
+            return insertSubTotal(rows, subtotalGroupFields(rows), subtotalTotalFields());
+        }
+        function sortInfo() {
+            var key = $('#ocSort').val() || 'date-desc';
+            if (key === 'customer-asc') return { fields: ['F_CusName'], type: 'asc' };
+            if (key === 'net-desc') return { fields: ['F_NetWeight'], type: 'desc' };
+            return { fields: ['F_CreatorTime'], type: key === 'date-asc' ? 'asc' : 'desc' };
+        }
+        function sortList(list) {
+            var info = sortInfo();
+            var names = info.fields || [];
+            var desc = info.type === 'desc';
+            var field = names[0];
+            var groupFields = subtotalGroupFields(list);
+            var n, r;
+            for (n = 0; n < names.length; n++) {
+                for (r = 0; r < list.length; r++) {
+                    if (list[r] && !list[r]._isSubTotal && pickRowField(list[r], names[n]) !== '') {
+                        field = names[n];
+                        n = names.length;
+                        break;
+                    }
+                }
+            }
+            list.sort(function (a, b) {
+                var g, av, bv, an, bn, cmp;
+                if (a && a._isSubTotal) return 1;
+                if (b && b._isSubTotal) return -1;
+                for (g = 0; g < groupFields.length; g++) {
+                    av = pickRowField(a, groupFields[g]);
+                    bv = pickRowField(b, groupFields[g]);
+                    cmp = String(av).localeCompare(String(bv), 'zh-CN', { numeric: true });
+                    if (cmp) return cmp;
+                }
+                av = pickRowField(a, field);
+                bv = pickRowField(b, field);
+                if (av === '') return 1;
+                if (bv === '') return -1;
+                an = Number(av);
+                bn = Number(bv);
+                if (!isNaN(an) && !isNaN(bn) && av !== '' && bv !== '') return desc ? (bn - an) : (an - bn);
+                cmp = String(av).localeCompare(String(bv), 'zh-CN', { numeric: true });
+                return desc ? -cmp : cmp;
+            });
+            return list;
+        }
+        // 接口数据：排序 + 插小计；分页总数用接口 count，不用小计后的行数
+        function parseSorted(res) {
+            var list = $.isArray(res) ? res.slice() : (((res && (res.data || res.rows)) || []).slice());
+            var count;
+            list = dataRows(list);
+            sortList(list);
+            listState.rawList = list.slice();
+            dirtyPrintRows = [];
+            if (!$.isArray(res) && res && res.count != null && res.count !== '') {
+                listState.serverCount = Number(res.count);
+            }
+            list = withSubTotal(list);
+            count = listState.serverCount || dataRows(list).length;
+            if ($.isArray(res)) return { code: 0, msg: '', count: count, data: list };
+            return {
+                code: (res && (res.state != null ? res.state : res.code)) || 0,
+                msg: (res && (res.message || res.msg)) || '',
+                count: count,
+                data: list
+            };
+        }
+
+        // ---------- 表格刷新 ----------
+        function parkTools() {
+            var $view = $('#view_fgout_detail').next('.layui-table-view');
+            var $slot = $view.find('.layui-table-tool-temp');
+            if (!$slot.length) $slot = $view.find('.layui-table-tool');
+            if (!$slot.length) return;
+            $('#ocTools').removeClass('is-park');
+            $slot.prepend($('#ocTools'));
+        }
+        function reloadList(cfg) {
+            var src = cfg || {};
+            var where = $.extend({}, src.where || {});
+            var live = {};
+            var reloadCfg;
+            where.enCode = tableOpt.enCode;
+            where.moduleEnCode = tableOpt.moduleEnCode;
+            if (where.type == null) where.type = 1;
+            try { live = table.getOptions(tableOpt.id) || {}; } catch (e) { live = {}; }
+            reloadCfg = {
+                where: where,
+                page: { curr: (src.page && src.page.curr) || (live.page && live.page.curr) || 1 }
+            };
+            if (!(live.url)) reloadCfg.url = listUrl;
+            else reloadCfg.url = live.url;
+            if (typeof table.reloadData === 'function') table.reloadData(tableOpt.id, reloadCfg);
+            else table.reload(tableOpt.id, reloadCfg, 'data');
+        }
+        function rowDirtyKey(row) {
+            return pickSaveKey(row) || rowOutOrderNo(row);
+        }
+        function markPrintDirty(row) {
+            var key;
+            if (!row || row._isSubTotal) return;
+            key = rowDirtyKey(row);
+            dirtyPrintRows = dirtyPrintRows.filter(function (r) { return rowDirtyKey(r) !== key; });
+            dirtyPrintRows.push(row);
+        }
+        function saveDirtyPrintNames() {
+            var list = dirtyPrintRows.slice();
+            var i = 0;
+            var okCount = 0;
+            var missOrders = [];
+            var failOrders = [];
+            var nameField = $.trim(PRINT_NAME_FIELD) || 'F_PrintMatName';
+            function saveNext() {
+                var parts;
+                if (i >= list.length) {
+                    layer.closeAll('loading');
+                    parts = [];
+                    if (missOrders.length) parts.push(missOrders.join('、') + ' 未找到成品出库原数据');
+                    if (failOrders.length) parts.push(failOrders.join('、') + ' 保存失败');
+                    if (parts.length) layer.msg(parts.join('；'));
+                    if (okCount) applyOcSort();
+                    return;
+                }
+                savePrintName(list[i], pickRowField(list[i], nameField), function (ok, miss) {
+                    if (ok) okCount++;
+                    else if (miss) missOrders.push(rowOutOrderNo(list[i]));
+                    else failOrders.push(rowOutOrderNo(list[i]));
+                    i = i + 1;
+                    saveNext();
+                });
+            }
+            if (!list.length) {
+                layer.msg('没有需要保存的打印品名');
+                return;
+            }
+            layer.load(1, { shade: 0.1 });
+            saveNext();
+        }
+        // 切汇总 / 排序：重新请求当前页，保留分页 url 和接口总数
+        function applyOcSort() {
+            var live = {};
+            var list, count;
+            try { live = table.getOptions(tableOpt.id) || {}; } catch (e) { live = {}; }
+            if (live.url || listUrl) {
+                reloadList({ where: live.where || {}, page: { curr: (live.page && live.page.curr) || 1 } });
+                return;
+            }
+            list = listState.rawList.length ? listState.rawList.slice() : dataRows(table.cache[tableOpt.id]);
+            if (!list.length) return;
+            sortList(list);
+            listState.rawList = list.slice();
+            count = listState.serverCount || list.length;
+            list = withSubTotal(list);
+            if (typeof table.reloadData === 'function') table.reloadData(tableOpt.id, { data: list, count: count });
+            else table.reload(tableOpt.id, { data: list, count: count });
+        }
+
+        var tableOpt = {
+            elem: '#view_fgout_detail',
+            id: 'view_fgout_detail',
+            enCode: 'view_fgout_detail',
+            tableFilter: 'detailsFilter',
+            moduleEnCode: 'FgoutDetail',
+            where: { moduleEnCode: 'FgoutDetail', enCode: 'view_fgout_detail' },
+            cols: [[]],
+            limit: 20,
+            page: true,
+            loading: true,
+            hideFields: [],
+            quickSearch: { elem: '#qsList' },
+            parseData: parseSorted,
+            setCustomConfig: function (col, config) {
+                bindLinkColumn(col, config);
+                markPrintNameColumn(col);
+            },
+            done: function () { parkTools(); },
+            onSearch: function (e) {
+                if (!e || (e.type !== 'plan' && e.type !== 'quick')) return;
+                if (e.type === 'plan') {
+                    var $layer = $('.layui-popupsearch-dialog').closest('.layui-layer');
+                    if ($layer.length) layer.close($layer.attr('times'));
+                }
+                reloadList(e.reloadCfg || {});
+                return false;
+            }
+        };
+
+        // ---------- 修改打印品名 ----------
+        function rememberRow(row) {
+            if (row && !$.isArray(row) && row._isSubTotal !== true) lastClickRow = row;
+        }
+        function rowFromTr($tr) {
+            var $view, tid, idx, row;
+            if (!$tr || !$tr.length) return null;
+            $view = $tr.closest('.layui-table-view');
+            tid = $view.attr('lay-id') || $view.attr('lay-table-id') || '';
+            idx = $tr.attr('data-index');
+            row = (table.cache[tid] || [])[idx];
+            return row && !$.isArray(row) ? row : null;
+        }
+        function markPrintNameColumn(col) {
+            var field = (col && ((col._raw && col._raw.F_EnCode) || col.field)) || '';
+            var title = (col && (col.title || (col._raw && col._raw.F_FullName))) || '';
+            var prev;
+            if (!col) return;
+            if (!(($.trim(PRINT_NAME_FIELD) && field === $.trim(PRINT_NAME_FIELD)) || String(title).indexOf('打印品名') >= 0)) return;
+            col.style = (col.style ? col.style + ';' : '') + 'cursor:cell;overflow:visible;';
+            col.escape = false;
+            prev = col.templet;
+            col.templet = function (d) {
+                var html;
+                if (d && d._isSubTotal) {
+                    return typeof prev === 'function' ? prev(d) : common.escapeHtml(pickRowField(d, field) || pickRowField(d, col.field));
+                }
+                html = typeof prev === 'function' ? prev(d) : common.escapeHtml(pickRowField(d, field) || pickRowField(d, col.field));
+                return '<span class="cell-text">' + (html || '') + '</span><span class="cell-fill-handle" title="按住向下拖动填充"></span>';
+            };
+        }
+        function isPrintNameCell($td) {
+            var field = $td.attr('data-field') || '';
+            var $th, title;
+            if ($.trim(PRINT_NAME_FIELD)) return field === $.trim(PRINT_NAME_FIELD);
+            $th = $td.closest('.layui-table-view').find('th[data-field="' + field + '"]').first();
+            title = $.trim($th.attr('data-key') || $th.find('span').first().text() || $th.text() || '');
+            return title.indexOf('打印品名') >= 0;
+        }
+        function printNameKeys() {
+            var nameField = $.trim(PRINT_NAME_FIELD) || 'F_PrintMatName';
+            var outField = $.trim(OUT_ORDER_NO_FIELD) || 'F_OutOrderNo';
+            return {
+                outNo: [outField],
+                flow: ['F_ProcessCode', 'F_CardCode', 'F_FlowCode', 'F_CardNo'],
+                customer: ['F_CusName', 'F_CustomerName', 'F_CusCode'],
+                name: [nameField]
+            };
+        }
+        function pageRows() {
+            return dataRows(table.cache[tableOpt.id]);
+        }
+        // 报表页没有勾选列：勾选 > 高亮行 > 上次点击行
+        function selectedPrintRow() {
+            var checked = [];
+            var $view = $('#' + tableOpt.id).next('.layui-table-view');
+            var $tr, row;
+            try { checked = (table.checkStatus(tableOpt.id) || {}).data || []; } catch (e) { checked = []; }
+            checked = dataRows(checked);
+            if (checked.length) return checked[0];
+            $tr = $view.find('.layui-table-box > .layui-table-body tbody tr.layui-table-click').first();
+            if (!$tr.length) $tr = $view.find('tbody tr.layui-table-click').first();
+            row = rowFromTr($tr);
+            if (row && row._isSubTotal !== true) return row;
+            if (lastClickRow && lastClickRow._isSubTotal !== true) return lastClickRow;
+            return null;
+        }
+        function rowOutOrderNo(row) {
+            return pickRowField(row, $.trim(OUT_ORDER_NO_FIELD) || 'F_OutOrderNo') || '未填单号';
+        }
+        // 保存一行打印品名：POST /Public/UpdateIndex；主键为空则记该行发货单号未找到成品出库原数据
+        function savePrintName(row, nextName, done) {
+            var keyValue = pickSaveKey(row);
+            var finished = false;
+            function finish(ok, miss) {
+                if (finished) return;
+                finished = true;
+                if (typeof done === 'function') done(!!ok, !!miss);
+            }
+            if (!keyValue) {
+                finish(false, true);
+                return;
+            }
+            $.ajax({
+                type: 'POST',
+                url: '/Public/UpdateIndex',
+                dataType: 'json',
+                data: {
+                    url: window.location.pathname,
+                    fieldName: PRINT_NAME_SAVE_FIELD,
+                    fieldValue: nextName,
+                    keyValue: keyValue
+                },
+                success: function (result) {
+                    var ok = result && (result.state === 'success' || result.code === 0 || result.success === true);
+                    finish(ok, false);
+                },
+                error: function () { finish(false, false); }
+            });
+        }
+        // 有几行就请求几次，上一行结束再请求下一行
+        function savePrintNames(rows, nextName, done) {
+            var list = rows || [];
+            var i = 0;
+            var okCount = 0;
+            var missOrders = [];
+            var failOrders = [];
+            function saveNext() {
+                if (i >= list.length) {
+                    if (typeof done === 'function') done(okCount, missOrders, failOrders);
+                    return;
+                }
+                savePrintName(list[i], nextName, function (ok, miss) {
+                    if (ok) okCount++;
+                    else if (miss) missOrders.push(rowOutOrderNo(list[i]));
+                    else failOrders.push(rowOutOrderNo(list[i]));
+                    i = i + 1;
+                    saveNext();
+                });
+            }
+            saveNext();
+        }
+        function printNamePreview($box, selected, rows, keys) {
+            var scope = $box.find('#pnScope').val() || 'current';
+            var nextName = $.trim($box.find('#pnName').val() || '');
+            var list = scope === 'all' ? rows : [selected];
+            var html = ['<table class="layui-table pn-preview"><thead><tr>',
+                '<th>发货单号</th><th>流转卡号</th><th>客户名称</th><th>当前打印品名</th><th>新打印品名</th>',
+                '</tr></thead><tbody>'];
+            list.forEach(function (r) {
+                html.push('<tr><td>' + common.escapeHtml(pickRowField(r, keys.outNo))
+                    + '</td><td>' + common.escapeHtml(pickRowField(r, keys.flow))
+                    + '</td><td>' + common.escapeHtml(pickRowField(r, keys.customer))
+                    + '</td><td>' + common.escapeHtml(pickRowField(r, keys.name))
+                    + '</td><td>' + common.escapeHtml(nextName)
+                    + '</td></tr>');
+            });
+            if (!list.length) html.push('<tr><td colspan="5">没有可显示的明细</td></tr>');
+            html.push('</tbody></table>');
+            $box.find('#pnPreview').html(html.join(''));
+        }
+        // opts.row：指定行；opts.hideScope：双击时不显示作用范围
+        function openPrintNameDialog(opts) {
+            var rows, selected, keys, outLabel, flowLabel, hideScope, scopeHtml;
+            opts = opts || {};
+            hideScope = !!opts.hideScope;
+            rows = pageRows();
+            selected = opts.row || selectedPrintRow();
+            if (!selected) {
+                layer.msg('请先选择一条发货明细');
+                return;
+            }
+            keys = printNameKeys();
+            keys.outNo = $.trim(OUT_ORDER_NO_FIELD) || 'F_OutOrderNo';
+            keys.flow = firstExistField(rows, keys.flow) || firstKey(selected, keys.flow);
+            keys.customer = firstExistField(rows, keys.customer) || firstKey(selected, keys.customer);
+            keys.name = $.trim(PRINT_NAME_FIELD) || 'F_PrintMatName';
+            outLabel = common.escapeHtml(pickRowField(selected, keys.outNo) || '未填单号');
+            flowLabel = common.escapeHtml(pickRowField(selected, keys.flow) || '未填流转卡');
+            if (hideScope) {
+                scopeHtml = '<input type="hidden" id="pnScope" value="current">';
+            } else {
+                scopeHtml = '<div class="layui-form-item"><label class="layui-form-label">作用范围</label><div class="layui-input-block">'
+                    + '<select id="pnScope" lay-filter="pnScope">'
+                    + '<option value="current">当前选中明细 · ' + outLabel + ' / ' + flowLabel + '</option>'
+                    + '<option value="all">当前页明细 · ' + rows.length + ' 条</option>'
+                    + '</select></div></div>';
+            }
+            layer.open({
+                type: 1,
+                title: '修改打印品名',
+                area: hideScope ? ['760px', '420px'] : ['760px', '560px'],
+                shadeClose: true,
+                btn: ['确定', '取消'],
+                content: '<div class="pn-dialog layui-form" lay-filter="pnForm">'
+                    + scopeHtml
+                    + '<div class="layui-form-item"><label class="layui-form-label">打印品名</label><div class="layui-input-block">'
+                    + '<input type="text" id="pnName" maxlength="50" autocomplete="off" class="layui-input" value="'
+                    + common.escapeHtml(pickRowField(selected, keys.name)) + '"></div></div>'
+                    + '<div id="pnPreview"></div></div>',
+                success: function (layero) {
+                    var $box = $(layero);
+                    pnCtx = { $box: $box, selected: selected, rows: rows, keys: keys };
+                    form.render('select', 'pnForm');
+                    printNamePreview($box, selected, rows, keys);
+                    $box.find('#pnName').on('input', function () { printNamePreview($box, selected, rows, keys); });
+                    $box.find('#pnName').focus().select();
+                },
+                end: function () { pnCtx = null; },
+                yes: function (index, layero) {
+                    var $box = $(layero);
+                    var nextName = $.trim($box.find('#pnName').val() || '');
+                    var scope = $box.find('#pnScope').val() || 'current';
+                    var targets;
+                    if (!nextName || nextName.length > 50) {
+                        layer.msg('请填写不超过50个字符的打印品名');
+                        $box.find('#pnName').focus();
+                        return;
+                    }
+                    targets = scope === 'all' ? rows : [selected];
+                    function writeName(r) {
+                        if (!r) return;
+                        r[keys.name] = nextName;
+                        if (r._raw) r._raw[keys.name] = nextName;
+                    }
+                    if (!targets.length) {
+                        layer.msg('没有可保存的明细');
+                        return false;
+                    }
+                    layer.load(1, { shade: 0.1 });
+                    savePrintNames(targets, nextName, function (okCount, missOrders, failOrders) {
+                        var parts = [];
+                        var saved;
+                        layer.closeAll('loading');
+                        missOrders = missOrders || [];
+                        failOrders = failOrders || [];
+                        saved = targets.filter(function (r) { return !!pickSaveKey(r); });
+                        if (missOrders.length) parts.push(missOrders.join('、') + ' 未找到成品出库原数据');
+                        if (failOrders.length) parts.push(failOrders.join('、') + ' 保存失败');
+                        if (parts.length) layer.msg(parts.join('；'));
+                        if (!okCount) return;
+                        saved.forEach(writeName);
+                        listState.rawList.forEach(function (r) {
+                            var hit = saved.some(function (t) {
+                                return t === r || (pickSaveKey(t) && pickSaveKey(t) === pickSaveKey(r));
+                            });
+                            if (hit) writeName(r);
+                        });
+                        applyOcSort();
+                        layer.close(index);
+                    });
+                    return false;
+                }
+            });
+        }
+
+        // ---------- 事件 ----------
+        form.render('select', 'ocSortForm');
+        form.render('radio', 'ocSortForm');
+        form.on('select(ocSort)', function () { applyOcSort(); });
+        form.on('radio(ocSubtotal)', function () { applyOcSort(); });
+        form.on('select(pnScope)', function () {
+            if (!pnCtx) return;
+            printNamePreview(pnCtx.$box, pnCtx.selected, pnCtx.rows, pnCtx.keys);
+        });
+        table.on('row(detailsFilter)', function (obj) { rememberRow(obj && obj.data); });
+        table.on('row(currentTableFilter)', function (obj) { rememberRow(obj && obj.data); });
+        $(document).on('mousedown click', '#ocTools', function (e) { e.stopPropagation(); });
+        $(document).on('change', '#ocSort', function () { applyOcSort(); });
+        $(document).on('change', 'input[name="ocSubtotal"]', function () { applyOcSort(); });
+        $(document).on('click', '#qsList .quickSearch-btn-save', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            saveDirtyPrintNames();
+        });
+        $(document).on('click', '#btnPrintName', function (e) {
+            e.stopPropagation();
+            openPrintNameDialog();
+        });
+        $(document).on('click', '#btnPriceChange', function (e) {
+            if(!lastClickRow || lastClickRow._isSubTotal === true){
+                layer.msg('请先选择一条发货明细');
+                return;
+            }
+            if(!lastClickRow.F_PriceUpdateURL){
+                layer.msg('没有价格变更地址');
+                return;
+            }
+            if(!lastClickRow.F_PriceUpdateId){
+                layer.msg('没有价格变更ID');
+                return;
+            }
+            common.modalOpen({
+                title: '价格变更',
+                url: lastClickRow.F_PriceUpdateURL,
+                width: '70%',
+                height: '80%',
+                param: {
+                    keyValue: lastClickRow.F_PriceUpdateId,
+                },
+            });
+        });
+        $(document).on('click', '.layui-table-view tbody tr', function () {
+            rememberRow(rowFromTr($(this)));
+        });
+        var fillDrag = null;
+        function printNameTdSelector() {
+            return 'td[data-field="' + ($.trim(PRINT_NAME_FIELD) || 'F_PrintMatName') + '"]';
+        }
+        function fillBody() {
+            return $('#' + tableOpt.id).next('.layui-table-view').find('.layui-table-box > .layui-table-body');
+        }
+        function fillRowTrs() {
+            return fillBody().find('tbody tr');
+        }
+        function fillNameTds() {
+            return fillRowTrs().find(printNameTdSelector());
+        }
+        function stopFillDrag() {
+            if (!fillDrag) return;
+            fillNameTds().removeClass('cell-fill-selected');
+            fillDrag = null;
+        }
+        function paintFillDrag() {
+            var $tds, start, end, i, top, y, $body;
+            if (!fillDrag) return;
+            $tds = fillNameTds();
+            $body = fillBody();
+            y = fillDrag.y;
+            if ($body.length) y = Math.min(y, ($body.offset().top + $body.outerHeight()) - 1);
+            start = fillDrag.start;
+            end = start;
+            for (i = start + 1; i < $tds.length; i++) {
+                top = $tds.eq(i).offset().top;
+                if (top < y) end = i;
+                else break;
+            }
+            fillDrag.end = end;
+            $tds.removeClass('cell-fill-selected');
+            for (i = start; i <= end; i++) $tds.eq(i).addClass('cell-fill-selected');
+        }
+        function applyFillDrag() {
+            var start = fillDrag && fillDrag.start;
+            var end = fillDrag && fillDrag.end;
+            var value = fillDrag && fillDrag.value;
+            var $trs, i, row, targets, nameField, $td, patch;
+            if (fillDrag == null || end == null || start == null || end <= start || !$.trim(value)) {
+                stopFillDrag();
+                return;
+            }
+            $trs = fillRowTrs();
+            targets = [];
+            nameField = $.trim(PRINT_NAME_FIELD) || 'F_PrintMatName';
+            for (i = start + 1; i <= end; i++) {
+                row = rowFromTr($trs.eq(i));
+                if (!row || row._isSubTotal) continue;
+                if (pickRowField(row, nameField) === value) continue;
+                $td = $trs.eq(i).find(printNameTdSelector()).first();
+                patch = {};
+                patch[nameField] = value;
+                if (eipTableEdit && typeof eipTableEdit.setCell === 'function' && $td.length) {
+                    eipTableEdit.setCell($td, patch);
+                } else {
+                    if (row) row[nameField] = value;
+                    $td.find('.cell-text').text(value);
+                }
+                if (row._raw) row._raw[nameField] = value;
+                targets.push(row);
+            }
+            stopFillDrag();
+            if (!targets.length) return;
+            listState.rawList.forEach(function (r) {
+                var hit = targets.some(function (t) {
+                    return t === r || (pickSaveKey(t) && pickSaveKey(t) === pickSaveKey(r));
+                });
+                if (hit) {
+                    r[nameField] = value;
+                    if (r._raw) r._raw[nameField] = value;
+                    markPrintDirty(r);
+                }
+            });
+            targets.forEach(markPrintDirty);
+        }
+        $(document).on('mousedown', '.cell-fill-handle', function (e) {
+            var $td, $trs, start, row, value;
+            if (e.which !== 1) return;
+            e.preventDefault();
+            e.stopPropagation();
+            $td = $(this).closest('td');
+            $trs = fillRowTrs();
+            start = $trs.index($td.closest('tr'));
+            row = rowFromTr($td.closest('tr'));
+            value = pickRowField(row, $.trim(PRINT_NAME_FIELD) || 'F_PrintMatName');
+            if (start < 0 || start >= $trs.length - 1 || !row || row._isSubTotal || !$.trim(value)) return;
+            rememberRow(row);
+            fillDrag = { start: start, end: start, y: e.clientY, value: value };
+            paintFillDrag();
+        });
+        $(document).on('mousemove', function (e) {
+            var $body, bottom;
+            if (!fillDrag) return;
+            fillDrag.y = e.clientY;
+            $body = fillBody();
+            if ($body.length) {
+                bottom = $body.offset().top + $body.outerHeight();
+                if (e.clientY > bottom - 18) $body.scrollTop($body.scrollTop() + 12);
+            }
+            paintFillDrag();
+        });
+        $(document).on('mouseup', function () {
+            if (!fillDrag) return;
+            applyFillDrag();
+        });
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && fillDrag) stopFillDrag();
+        });
+        $(document).on('dblclick', '.layui-table-view td', function (e) {
+            var $td = $(this);
+            var row;
+            if ($(e.target).closest('.cell-fill-handle').length) return;
+            if (!isPrintNameCell($td)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            row = rowFromTr($td.closest('tr'));
+            if (!row || row._isSubTotal) return;
+            rememberRow(row);
+            openPrintNameDialog({ row: row, hideScope: true });
+        });
+        $(document).on('click', '.process-open-link', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $a = $(this);
+            var openUrl = $a.attr('data-url') || '';
+            var keyValue = $a.attr('data-key') || '';
+            var passObj = $a.attr('data-pass') === 'obj';
+            var row, flatRow, spotId, cardId;
+            rememberRow(getClickRow($a));
+            if (!openUrl) { layer.msg('缺少打开地址，无法打开明细'); return; }
+            row = passObj ? getClickRow($a) : null;
+            if (row && row._isSubTotal) return;
+            if (passObj && !row) { layer.msg('没有取到当前行，无法打开明细'); return; }
+            if (!passObj && !keyValue) { layer.msg('缺少主键，无法打开明细'); return; }
+            flatRow = flattenRow(row);
+            if (flatRow && !$.isEmptyObject(flatRow)) {
+                try { sessionStorage.setItem('FgoutDetail_row', JSON.stringify(flatRow)); } catch (err) { }
+            }
+            spotId = pickRowField(flatRow, 'F_SpotColorId') || (row ? pickRowField(row, 'F_SpotColorId') : '');
+            cardId = pickRowField(flatRow, 'F_CardId')
+                || (row ? pickRowField(row, 'F_CardId') : '')
+                || (row ? pickRowField(row, 'F_Id') : '')
+                || keyValue;
+            common.modalOpen({
+                title: '查看详情',
+                url: openUrl + (openUrl.indexOf('?') >= 0 ? '&' : '?') + 'isPreview=true',
+                width: '70%',
+                height: '80%',
+                param: {
+                    keyValue: spotId || cardId || keyValue,
+                    F_SpotColorId: spotId,
+                    F_CardId: cardId,
+                    F_ProcessCode: pickRowField(flatRow, 'F_ProcessCode') || (row ? pickRowField(row, 'F_ProcessCode') : ''),
+                    F_EquipmentledgerId: pickRowField(flatRow, 'F_EquipmentledgerId'),
+                    F_ProductformulaId: pickRowField(flatRow, 'F_ProductformulaId'),
+                    F_WholetanknoticeId: pickRowField(flatRow, 'F_WholetanknoticeId'),
+                    F_CusagreeovercostId: pickRowField(flatRow, 'F_CusagreeovercostId'),
+                    F_PriceApprovalId: pickRowField(flatRow, 'F_PriceApprovalId'),
+                    F_DyesubstockoutId: pickRowField(flatRow, 'F_DyesubstockoutId'),
+                },
+                routeState: flatRow && !$.isEmptyObject(flatRow) ? flatRow : (row || undefined),
+                btn: []
+            });
+        });
+
+        commonTable.createtable(tableOpt).then(function () { parkTools(); });
+        wcLoading.close();
+    });
+</script>
+
+<style type="text/css">
+    .process-open-link { color: #1E9FFF; text-decoration: underline; cursor: pointer; }
+    .process-open-link:hover { color: #0d8aee; }
+    .oc-tools { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
+    .oc-tools label { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+    .pn-dialog { padding: 16px 16px 8px; }
+    .pn-dialog .layui-form-label { width: 88px; }
+    .pn-dialog .layui-input-block { margin-left: 118px; }
+    .pn-preview { margin-top: 8px; }
+    .pn-preview th, .pn-preview td { font-size: 12px; }
+    .layui-table-view td[data-field="F_PrintMatName"] .layui-table-cell { overflow: visible; position: relative; padding-right: 12px; }
+    .cell-fill-handle {
+        display: none;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 14px;
+        height: 14px;
+        cursor: crosshair;
+        z-index: 3;
+    }
+    .layui-table-click:has(~ tr) .cell-fill-handle { display: block; }
+    .cell-fill-handle::after {
+        content: "";
+        position: absolute;
+        right: 1px;
+        bottom: 1px;
+        width: 8px;
+        height: 8px;
+        border: 1px solid #fff;
+        background: #2573b6;
+    }
+    .layui-table-view td.cell-fill-selected { box-shadow: inset 0 0 0 2px #2573b6; }
+</style>
+
+<body>
+    <div class="layuimini-container fgin-page">
+        <fieldset class="table-search-fieldset layui-hide" id="searchField">
+            <div>
+                <form class="layui-form layui-form-pane">
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">关键字:</label>
+                        <div class="layui-input-inline">
+                            <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off" class="layui-input">
+                        </div>
+                        <button type="submit" class="layui-btn layui-btn-primary" lay-submit lay-filter="data-search-btn">
+                            <i class="layui-icon">&#xe615;</i> 搜 索
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </fieldset>
+
+        <div class="oc-tools is-park layui-form" id="ocTools" lay-filter="ocSortForm">
+            <span>汇总</span>
+            <label><input type="radio" name="ocSubtotal" lay-filter="ocSubtotal" value="all" title="全部" checked></label>
+            <label><input type="radio" name="ocSubtotal" lay-filter="ocSubtotal" value="customer" title="客户"></label>
+            <label><input type="radio" name="ocSubtotal" lay-filter="ocSubtotal" value="product" title="客户＋品名"></label>
+            <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="btnPriceChange">价格变更</button>
+            <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="btnPrintName">修改打印品名</button>
+            <label>
+                排序
+                <select id="ocSort" lay-filter="ocSort">
+                    <option value="date-desc">开单日期从近到远</option>
+                    <option value="date-asc">开单日期从远到近</option>
+                    <option value="customer-asc">客户名称升序</option>
+                    <option value="net-desc">成品重量从高到低</option>
+                </select>
+            </label>
+        </div>
+
+        <fieldset class="table-search-fieldset layui-hide" id="qsList">
+            <div class="quickSearch-fields"></div>
+            <div class="quickSearch-actions">
+                <button type="button" class="layui-btn layui-btn-sm quickSearch-btn-search">查询</button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm quickSearch-btn-reset">重置</button>
+                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm quickSearch-btn-save">保存</button>
+            </div>
+        </fieldset>
+        <table class="layui-hide" id="view_fgout_detail" lay-filter="detailsFilter"></table>
+    </div>
+</body>

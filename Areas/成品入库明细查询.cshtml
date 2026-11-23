@@ -1,0 +1,613 @@
+<script>
+    // 成品入库查询：三个 Tab，首次切入才 createtable；排序工具条挂到当前表工具栏
+    layui.use(['jquery', 'form', 'element', 'layer', 'table', 'commonTable', 'common'], function () {
+        var $ = layui.$,
+            form = layui.form,
+            element = layui.element,
+            table = layui.table,
+            layer = layui.layer,
+            commonTable = layui.commonTable,
+            common = layui.common;
+
+        sessionStorage.removeItem(window.location.pathname + '_key');
+        window.ToolClick = function (obj) { eval(common.clickTools(obj)); };
+        common.authorizeFields('adminform');
+
+        var listUrl = '/Public/GetTableJson';
+        var currentIndex = 0;
+        var CUS_NAME_FIELD = 'F_CusName';
+        var MAT_NAME_FIELD = 'F_MatName';
+
+        // enCode：表格编码（逗号可写多张表）；field：显示列；url：路径或行字段名；Id：主键列，写 obj 表示整行传入
+        var linkFieldConfig = [
+            { enCode: 'view_fgin_list,view_fgin_detail,view_fgin_craft', field: 'F_ProcessCode', url: '/Module/FginDetail/Form', Id: 'obj' },
+            { enCode: 'view_fgin_list,view_fgin_detail', field: 'F_ReceiptCode', url: 'F_FgstockinURL', Id: 'F_Id' }
+        ];
+
+        var TAB_METAS = [
+            { id: 'view_fgin_list', inited: false, rawList: [], serverCount: 0 },
+            { id: 'view_fgin_detail', inited: false, rawList: [], serverCount: 0 },
+            { id: 'view_fgin_craft', inited: false, rawList: [], serverCount: 0 }
+        ];
+
+        // ---------- 行字段 / 超链接 ----------
+        function pickRowField(row, name) {
+            if (!row || !name) return '';
+            var v = row[name];
+            if (v && typeof v === 'object') {
+                v = (v.value != null && v.value !== '') ? v.value : (v.displayValue || '');
+            }
+            return v == null || v === '' ? '' : String(v);
+        }
+
+        function resolveLinkUrl(ruleUrl, row) {
+            var s = $.trim(ruleUrl || '');
+            if (/^(https?:)?\/\//i.test(s) || /^(\/|\.\/|\.\.\/)/.test(s) || s.indexOf('/') >= 0) return s;
+            return pickRowField(row, s) || pickRowField(row, 'F_URL') || pickRowField(row, 'F_Url');
+        }
+
+        function linkRuleForTable(rule, tableEnCode) {
+            return String((rule && rule.enCode) || '').split(',').some(function (x) {
+                return $.trim(x) === tableEnCode;
+            });
+        }
+
+        function bindLinkColumn(tableEnCode, col, config) {
+            var fieldEnCode = (col._raw && col._raw.F_EnCode) || '';
+            var rule = null;
+            for (var i = 0; i < linkFieldConfig.length; i++) {
+                var c = linkFieldConfig[i];
+                if (!linkRuleForTable(c, tableEnCode)) continue;
+                if (c.field === col.field || c.field === fieldEnCode) {
+                    rule = c;
+                    break;
+                }
+            }
+            if (!rule) return;
+            col.event = '';
+            col.escape = false;
+            if (config) config.disabled = true;
+            col.templet = function (d) {
+                if (d && d._isSubTotal) return '';
+                var text = pickRowField(d, rule.field) || pickRowField(d, col.field) || pickRowField(d, fieldEnCode);
+                if (!text) return '';
+                var openUrl = resolveLinkUrl(rule.url, d);
+                var passObj = String(rule.Id || '').toLowerCase() === 'obj';
+                var keyValue = passObj
+                    ? (pickRowField(d, 'F_Id') || pickRowField(d, 'F_CardId') || pickRowField(d, 'F_PrimaryId'))
+                    : (pickRowField(d, rule.Id) || pickRowField(d, 'F_Id') || pickRowField(d, 'F_CardId') || pickRowField(d, 'F_PrimaryId'));
+                var texts = text.split(',');
+                var ids = String(keyValue || '').split(',');
+                var html = [];
+                for (var j = 0; j < texts.length; j++) {
+                    var one = $.trim(texts[j]);
+                    if (!one) continue;
+                    html.push(
+                        '<a href="javascript:;" class="process-open-link"'
+                        + ' data-url="' + common.escapeHtml(openUrl) + '"'
+                        + ' data-key="' + common.escapeHtml($.trim(ids[j] || '')) + '"'
+                        + ' data-pass="' + (passObj ? 'obj' : '') + '"'
+                        + ' data-table="' + common.escapeHtml(tableEnCode) + '"'
+                        + '>' + common.escapeHtml(one) + '</a>'
+                    );
+                }
+                return html.join(',');
+            };
+        }
+
+        function flattenRow(src) {
+            var out = {};
+            if (!src) return out;
+            Object.keys(src).forEach(function (k) {
+                if (k.indexOf('LAY_') === 0) return;
+                var v = pickRowField(src, k);
+                if (v !== '') out[k] = v;
+            });
+            return out;
+        }
+
+        function getClickRow($a) {
+            var $view = $a.closest('.layui-table-view');
+            var tableId = $a.attr('data-table')
+                || $view.attr('lay-table-id')
+                || $view.attr('lay-id')
+                || '';
+            var index = $a.closest('tr').data('index');
+            return (table.cache[tableId] || [])[index] || null;
+        }
+
+        // ---------- 排序工具条 ----------
+        function sortInfo() {
+            var key = $('#ocSort').val() || 'date-desc';
+            if (key === 'customer-asc') return { fields: ['F_CusName'], type: 'asc' };
+            if (key === 'net-desc') return { fields: ['F_NetWeight', 'F_GramWeight'], type: 'desc' };
+            return { fields: ['F_EntryDay', 'F_CreatorTime'], type: key === 'date-asc' ? 'asc' : 'desc' };
+        }
+
+        function sortList(list) {
+            var info = sortInfo();
+            var names = info.fields || [];
+            var desc = info.type === 'desc';
+            var field = names[0];
+            var groupFields = subtotalGroupFields(TAB_TABLES[currentIndex], list);
+            for (var n = 0; n < names.length; n++) {
+                for (var r = 0; r < list.length; r++) {
+                    if (list[r] && !list[r]._isSubTotal && pickRowField(list[r], names[n]) !== '') {
+                        field = names[n];
+                        n = names.length;
+                        break;
+                    }
+                }
+            }
+            list.sort(function (a, b) {
+                var g, av, bv, an, bn, cmp;
+                if (a && a._isSubTotal) return 1;
+                if (b && b._isSubTotal) return -1;
+                for (g = 0; g < groupFields.length; g++) {
+                    av = pickRowField(a, groupFields[g]);
+                    bv = pickRowField(b, groupFields[g]);
+                    cmp = String(av).localeCompare(String(bv), 'zh-CN', { numeric: true });
+                    if (cmp) return cmp;
+                }
+                av = pickRowField(a, field);
+                bv = pickRowField(b, field);
+                if (av === '') return 1;
+                if (bv === '') return -1;
+                an = Number(av);
+                bn = Number(bv);
+                if (!isNaN(an) && !isNaN(bn) && av !== '' && bv !== '') return desc ? (bn - an) : (an - bn);
+                cmp = String(av).localeCompare(String(bv), 'zh-CN', { numeric: true });
+                return desc ? -cmp : cmp;
+            });
+            return list;
+        }
+
+        // 修改内容：对照 index.html 汇总条件，小计算法对齐框架 processDataWithSubTotal（只改本页）
+        function subtotalMode() {
+            return $('input[name="ocSubtotal"]:checked').val() || 'all';
+        }
+        function firstExistField(list, names) {
+            var n, i;
+            for (n = 0; n < names.length; n++) {
+                for (i = 0; i < (list || []).length; i++) {
+                    if (list[i] && !list[i]._isSubTotal && pickRowField(list[i], names[n]) !== '') return names[n];
+                }
+            }
+            return '';
+        }
+        function eachTableCol(opt, fn) {
+            var bags = [(opt && opt.cols) || []];
+            try {
+                var live = (table.getOptions(opt && opt.id) || {}).cols;
+                if (live) bags.push(live);
+            } catch (e) { }
+            bags.forEach(function (cols) {
+                (cols || []).forEach(function (row) {
+                    (Array.isArray(row) ? row : [row]).forEach(function (col) {
+                        if (col) fn(col);
+                    });
+                });
+            });
+        }
+        function colFlag(col, name) {
+            var raw = col._raw || {};
+            var v = raw[name];
+            if (v === true || v === 1 || v === '1' || v === 'true') return true;
+            if (name === 'F_IsTotal' && (col.totalRow === true || col.totalRow === '合计') && col.field && col.type !== 'checkbox' && col.type !== 'radio' && col.type !== 'numbers') {
+                return col.totalRow === true;
+            }
+            return false;
+        }
+        function subtotalGroupFields(opt, list) {
+            var mode = subtotalMode();
+            var merge = [];
+            var seen = {};
+            if (mode === 'customer') return [CUS_NAME_FIELD];
+            if (mode === 'product') return [CUS_NAME_FIELD, MAT_NAME_FIELD];
+            // 全部：跟框架一样，按模块勾了「合并」的列分组
+            eachTableCol(opt, function (col) {
+                var name = col.field || (col._raw && col._raw.F_EnCode);
+                if (!name || seen[name] || !colFlag(col, 'F_IsMerge')) return;
+                seen[name] = true;
+                merge.push(name);
+            });
+            return merge;
+        }
+        function subtotalTotalFields(opt, list) {
+            var fields = [];
+            var seen = {};
+            eachTableCol(opt, function (col) {
+                var name = col.field || (col._raw && col._raw.F_EnCode);
+                if (!name || seen[name]) return;
+                if (!colFlag(col, 'F_IsTotal') && col.totalRow !== true) return;
+                if (col.type === 'checkbox' || col.type === 'radio' || col.type === 'numbers') return;
+                seen[name] = true;
+                fields.push(name);
+            });
+            return fields;
+        }
+        function insertSubTotal(list, groupFields, totalFields) {
+            var result = [];
+            var group = [];
+            var lastKey = '';
+            if (!groupFields || !groupFields.length) return list;
+            totalFields = totalFields || [];
+            function rowKey(row) {
+                return groupFields.map(function (f) { return pickRowField(row, f); }).join('\u0001');
+            }
+            function flush() {
+                var sub, i, sum, num;
+                if (!group.length) return;
+                result = result.concat(group);
+                sub = $.extend({}, group[group.length - 1]);
+                Object.keys(sub).forEach(function (k) {
+                    if (k !== 'LAY_INDEX' && k !== 'LAY_NUM') sub[k] = '';
+                });
+                for (i = 0; i < totalFields.length; i++) {
+                    sum = group.reduce(function (total, row) {
+                        num = Number(pickRowField(row, totalFields[i]));
+                        return isNaN(num) ? total : total + num;
+                    }, 0);
+                    sub[totalFields[i]] = '\u200B' + sum.toFixed(2);
+                }
+                sub[groupFields[0]] = '小计';
+                sub._isSubTotal = true;
+                result.push(sub);
+                group = [];
+            }
+            list.forEach(function (row) {
+                var key;
+                if (!row || row._isSubTotal) return;
+                key = rowKey(row);
+                if (group.length && key !== lastKey) flush();
+                group.push(row);
+                lastKey = key;
+            });
+            flush();
+            return result;
+        }
+        function withSubTotal(opt, list) {
+            var rows = (list || []).filter(function (r) { return r && r._isSubTotal !== true; });
+            return insertSubTotal(rows, subtotalGroupFields(opt, rows), subtotalTotalFields(opt, rows));
+        }
+
+        function parseSorted(res) {
+            var list = $.isArray(res) ? res.slice() : (((res && (res.data || res.rows)) || []).slice());
+            var meta = TAB_METAS[currentIndex];
+            var opt = TAB_TABLES[currentIndex];
+            var count;
+            list = list.filter(function (r) { return r && r._isSubTotal !== true; });
+            sortList(list);
+            if (meta) meta.rawList = list.slice();
+            // 修改内容：分页总数用接口 count，不要用插入小计后的行数
+            if (meta && !$.isArray(res) && res && res.count != null && res.count !== '') {
+                meta.serverCount = Number(res.count);
+            }
+            list = withSubTotal(opt, list);
+            count = (meta && meta.serverCount) ? meta.serverCount : list.filter(function (r) { return r && r._isSubTotal !== true; }).length;
+            if ($.isArray(res)) return { code: 0, msg: '', count: count, data: list };
+            return {
+                code: (res && (res.state != null ? res.state : res.code)) || 0,
+                msg: (res && (res.message || res.msg)) || '',
+                count: count,
+                data: list
+            };
+        }
+
+        function parkTools(tableElemId) {
+            var $view = $('#' + tableElemId).next('.layui-table-view');
+            var $slot = $view.find('.layui-table-tool-temp');
+            if (!$slot.length) $slot = $view.find('.layui-table-tool');
+            if (!$slot.length) return;
+            $('#ocTools').removeClass('is-park');
+            $slot.prepend($('#ocTools'));
+        }
+
+        function applyOcSort() {
+            var meta = TAB_METAS[currentIndex];
+            var opt = TAB_TABLES[currentIndex];
+            var live = {};
+            var url;
+            var curr;
+            var list;
+            var count;
+            if (!meta || !opt) return;
+            try { live = table.getOptions(opt.id) || {}; } catch (e) { live = {}; }
+            url = live.url || listUrl;
+            curr = (live.page && live.page.curr) || 1;
+            // 修改内容：切汇总时重新请求当前页，保留分页 url 和接口总数
+            // list = (meta.rawList && meta.rawList.length)
+            //     ? meta.rawList.slice()
+            //     : (table.cache[meta.id] || []).filter(function (r) { return r && !$.isArray(r) && r._isSubTotal !== true; });
+            // if (!list.length) return;
+            // sortList(list);
+            // meta.rawList = list.slice();
+            // list = withSubTotal(opt, list);
+            // if (typeof table.reloadData === 'function') table.reloadData(opt.id, { data: list, url: '' });
+            // else table.reload(opt.id, { data: list, url: '' });
+            if (url) {
+                if (typeof table.reloadData === 'function') {
+                    table.reloadData(opt.id, {
+                        url: url,
+                        where: $.extend({}, live.where || {}, { enCode: opt.enCode, moduleEnCode: opt.moduleEnCode }),
+                        page: { curr: curr }
+                    });
+                } else {
+                    table.reload(opt.id, {
+                        url: url,
+                        where: $.extend({}, live.where || {}, { enCode: opt.enCode, moduleEnCode: opt.moduleEnCode }),
+                        page: { curr: curr }
+                    }, 'data');
+                }
+                return;
+            }
+            list = (meta.rawList && meta.rawList.length)
+                ? meta.rawList.slice()
+                : (table.cache[meta.id] || []).filter(function (r) { return r && !$.isArray(r) && r._isSubTotal !== true; });
+            if (!list.length) return;
+            sortList(list);
+            meta.rawList = list.slice();
+            count = meta.serverCount || list.length;
+            list = withSubTotal(opt, list);
+            if (typeof table.reloadData === 'function') table.reloadData(opt.id, { data: list, count: count });
+            else table.reload(opt.id, { data: list, count: count });
+        }
+
+        // 查询：只刷当前表，带上 enCode / moduleEnCode
+        function reloadTab(opt, cfg) {
+            var src = cfg || {};
+            var where = $.extend({}, src.where || {});
+            where.enCode = opt.enCode;
+            where.moduleEnCode = opt.moduleEnCode;
+            if (where.type == null) where.type = 1;
+            var reloadCfg = {
+                where: where,
+                page: { curr: (src.page && src.page.curr) || 1 }
+            };
+            try {
+                if (!(table.getOptions(opt.id) || {}).url) reloadCfg.url = listUrl;
+            } catch (e) {
+                reloadCfg.url = listUrl;
+            }
+            if (typeof table.reloadData === 'function') table.reloadData(opt.id, reloadCfg);
+            else table.reload(opt.id, reloadCfg, 'data');
+        }
+
+        function onTableSearch(opt, e) {
+            if (!e || (e.type !== 'plan' && e.type !== 'quick')) return;
+            if (e.type === 'plan') {
+                var $layer = $('.layui-popupsearch-dialog').closest('.layui-layer');
+                if ($layer.length) layer.close($layer.attr('times'));
+            }
+            reloadTab(opt, e.reloadCfg || {});
+            return false;
+        }
+
+        // 三个 createtable 配置（与 index.cshtml 一样用数组）
+        var TAB_TABLES = [
+            {
+                elem: '#view_fgin_list',
+                id: 'view_fgin_list',
+                enCode: 'view_fgin_list',
+                tableFilter: 'detailsFilter',
+                moduleEnCode: 'FginDetail',
+                where: { moduleEnCode: 'FginDetail', enCode: 'view_fgin_list' },
+                cols: [[]],
+                limit: 20,
+                page: true,
+                loading: true,
+                hideFields: [],
+                quickSearch: { elem: '#qsList' },
+                parseData: parseSorted,
+                setCustomConfig: function (col, config) {
+                    bindLinkColumn('view_fgin_list', col, config);
+                },
+                done: function () { parkTools('view_fgin_list'); },
+                onSearch: function (e) { return onTableSearch(TAB_TABLES[0], e); }
+            },
+            {
+                elem: '#view_fgin_detail',
+                id: 'view_fgin_detail',
+                enCode: 'view_fgin_detail',
+                tableFilter: 'summaryFilter',
+                moduleEnCode: 'FginDetail',
+                where: { moduleEnCode: 'FginDetail', enCode: 'view_fgin_detail' },
+                cols: [[]],
+                limit: 20,
+                page: true,
+                loading: true,
+                hideFields: [],
+                quickSearch: { elem: '#qsDetail' },
+                parseData: parseSorted,
+                setCustomConfig: function (col, config) {
+                    bindLinkColumn('view_fgin_detail', col, config);
+                },
+                done: function () { parkTools('view_fgin_detail'); },
+                onSearch: function (e) { return onTableSearch(TAB_TABLES[1], e); }
+            },
+            {
+                elem: '#view_fgin_craft',
+                id: 'view_fgin_craft',
+                enCode: 'view_fgin_craft',
+                tableFilter: 'formulaFilter',
+                moduleEnCode: 'FginDetailPF',
+                where: { moduleEnCode: 'FginDetailPF', enCode: 'view_fgin_craft' },
+                cols: [[]],
+                limit: 20,
+                page: true,
+                loading: true,
+                hideFields: [],
+                quickSearch: { elem: '#qsCraft' },
+                parseData: parseSorted,
+                setCustomConfig: function (col, config) {
+                    bindLinkColumn('view_fgin_craft', col, config);
+                },
+                done: function () { parkTools('view_fgin_craft'); },
+                onSearch: function (e) { return onTableSearch(TAB_TABLES[2], e); }
+            }
+        ];
+
+        // 核心：首次 createtable，后续切 Tab 只 resize + 挂回排序条
+        function loadTab(index) {
+            var meta = TAB_METAS[index];
+            var opt = TAB_TABLES[index];
+            if (!meta || !opt) return;
+            currentIndex = index;
+            if (!meta.inited) {
+                Promise.resolve(commonTable.createtable(opt)).then(function () {
+                    meta.inited = true;
+                    parkTools(opt.id);
+                });
+            } else {
+                parkTools(opt.id);
+                table.resize(opt.id);
+            }
+        }
+
+        form.render('select', 'ocSortForm');
+        form.render('radio', 'ocSortForm');
+        form.on('select(ocSort)', function () { applyOcSort(); });
+        form.on('radio(ocSubtotal)', function () { applyOcSort(); });
+        $(document).on('mousedown click', '#ocTools', function (e) { e.stopPropagation(); });
+        $(document).on('change', '#ocSort', function () { applyOcSort(); });
+        $(document).on('change', 'input[name="ocSubtotal"]', function () { applyOcSort(); });
+
+        $(function () {
+            loadTab(0);
+            element.on('tab(ocMainTab)', function (data) {
+                loadTab(data.index || 0);
+            });
+        });
+
+        // 点超链接：Id=obj 时整行写入 sessionStorage + routeState
+        $(document).on('click', '.process-open-link', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $a = $(this);
+            var openUrl = $a.attr('data-url') || '';
+            var keyValue = $a.attr('data-key') || '';
+            var passObj = $a.attr('data-pass') === 'obj';
+            if (!openUrl) { layer.msg('缺少打开地址，无法打开明细'); return; }
+            var row = passObj ? getClickRow($a) : null;
+            if (row && row._isSubTotal) return;
+            if (passObj && !row) { layer.msg('没有取到当前行，无法打开明细'); return; }
+            if (!passObj && !keyValue) { layer.msg('缺少主键，无法打开明细'); return; }
+
+            var flatRow = flattenRow(row);
+            if (flatRow && !$.isEmptyObject(flatRow)) {
+                try { sessionStorage.setItem('FginDetail_row', JSON.stringify(flatRow)); } catch (err) { }
+            }
+            var spotId = pickRowField(flatRow, 'F_SpotColorId') || (row ? pickRowField(row, 'F_SpotColorId') : '');
+            var cardId = pickRowField(flatRow, 'F_CardId')
+                || (row ? pickRowField(row, 'F_CardId') : '')
+                || (row ? pickRowField(row, 'F_Id') : '')
+                || keyValue;
+
+            common.modalOpen({
+                title: '查看详情',
+                url: openUrl + (openUrl.indexOf('?') >= 0 ? '&' : '?') + 'isPreview=true',
+                width: '70%',
+                height: '80%',
+                param: {
+                    keyValue: spotId || cardId || keyValue,
+                    F_SpotColorId: spotId,
+                    F_CardId: cardId,
+                    F_ProcessCode: pickRowField(flatRow, 'F_ProcessCode') || (row ? pickRowField(row, 'F_ProcessCode') : ''),
+                    F_EquipmentledgerId: pickRowField(flatRow, 'F_EquipmentledgerId'),
+                    F_ProductformulaId: pickRowField(flatRow, 'F_ProductformulaId'),
+                    F_WholetanknoticeId: pickRowField(flatRow, 'F_WholetanknoticeId'),
+                    F_CusagreeovercostId: pickRowField(flatRow, 'F_CusagreeovercostId'),
+                    F_PriceApprovalId: pickRowField(flatRow, 'F_PriceApprovalId'),
+                    F_DyesubstockoutId: pickRowField(flatRow, 'F_DyesubstockoutId'),
+                },
+                routeState: flatRow && !$.isEmptyObject(flatRow) ? flatRow : (row || undefined),
+                btn: []
+            });
+        });
+
+        wcLoading.close();
+    });
+</script>
+
+<style type="text/css">
+    .process-open-link { color: #1E9FFF; text-decoration: underline; cursor: pointer; }
+    .process-open-link:hover { color: #0d8aee; }
+    .oc-tools { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
+    .oc-tools label { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+</style>
+
+<body>
+    <div class="layuimini-container fgin-page">
+        <fieldset class="table-search-fieldset layui-hide" id="searchField">
+            <div>
+                <form class="layui-form layui-form-pane">
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">关键字:</label>
+                        <div class="layui-input-inline">
+                            <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off" class="layui-input">
+                        </div>
+                        <button type="submit" class="layui-btn layui-btn-primary" lay-submit lay-filter="data-search-btn">
+                            <i class="layui-icon">&#xe615;</i> 搜 索
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </fieldset>
+
+        <div class="oc-tools is-park layui-form" id="ocTools" lay-filter="ocSortForm">
+            <span>汇总</span>
+            <label><input type="radio" name="ocSubtotal" lay-filter="ocSubtotal" value="all" title="全部" checked></label>
+            <label><input type="radio" name="ocSubtotal" lay-filter="ocSubtotal" value="customer" title="客户"></label>
+            <label><input type="radio" name="ocSubtotal" lay-filter="ocSubtotal" value="product" title="客户＋品名"></label>
+            <label>
+                排序
+                <select id="ocSort" lay-filter="ocSort">
+                    <option value="date-desc">开单日期从近到远</option>
+                    <option value="date-asc">开单日期从远到近</option>
+                    <option value="customer-asc">客户名称升序</option>
+                    <option value="net-desc">成品重量从高到低</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="layui-tab layui-tab-brief" lay-filter="ocMainTab">
+            <ul class="layui-tab-title">
+                <li class="layui-this" lay-id="list">明细查询</li>
+                <li lay-id="summary">汇总查询</li>
+                <li lay-id="craft">汇总查询（配方/工艺）</li>
+            </ul>
+            <div class="layui-tab-content">
+                <div class="layui-tab-item layui-show">
+                    <fieldset class="table-search-fieldset layui-hide" id="qsList">
+                        <div class="quickSearch-fields"></div>
+                        <div class="quickSearch-actions">
+                            <button type="button" class="layui-btn layui-btn-sm quickSearch-btn-search">查询</button>
+                            <button type="button" class="layui-btn layui-btn-primary layui-btn-sm quickSearch-btn-reset">重置</button>
+                        </div>
+                    </fieldset>
+                    <table class="layui-hide" id="view_fgin_list" lay-filter="detailsFilter"></table>
+                </div>
+                <div class="layui-tab-item">
+                    <fieldset class="table-search-fieldset layui-hide" id="qsDetail">
+                        <div class="quickSearch-fields"></div>
+                        <div class="quickSearch-actions">
+                            <button type="button" class="layui-btn layui-btn-sm quickSearch-btn-search">查询</button>
+                            <button type="button" class="layui-btn layui-btn-primary layui-btn-sm quickSearch-btn-reset">重置</button>
+                        </div>
+                    </fieldset>
+                    <table class="layui-hide" id="view_fgin_detail" lay-filter="summaryFilter"></table>
+                </div>
+                <div class="layui-tab-item">
+                    <fieldset class="table-search-fieldset layui-hide" id="qsCraft">
+                        <div class="quickSearch-fields"></div>
+                        <div class="quickSearch-actions">
+                            <button type="button" class="layui-btn layui-btn-sm quickSearch-btn-search">查询</button>
+                            <button type="button" class="layui-btn layui-btn-primary layui-btn-sm quickSearch-btn-reset">重置</button>
+                        </div>
+                    </fieldset>
+                    <table class="layui-hide" id="view_fgin_craft" lay-filter="formulaFilter"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

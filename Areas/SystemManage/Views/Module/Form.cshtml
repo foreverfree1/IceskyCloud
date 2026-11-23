@@ -1,0 +1,766 @@
+﻿@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<style>
+    .layui-iconpicker-body.layui-iconpicker-body-page .hide {
+        display: none;
+    }
+
+    /* F_IsTree 三态复选框：半选(1) 显示蓝底短横线 */
+    #F_IsTreeBox+.layui-form-checkbox.tri-half i {
+        background-color: #1E9FFF;
+        border-color: #1E9FFF;
+        font-size: 0;
+        /* 隐藏“勾”字形 */
+    }
+
+    #F_IsTreeBox+.layui-form-checkbox.tri-half i:after {
+        content: '';
+        display: block;
+        width: 8px;
+        height: 2px;
+        margin: 7px auto 0;
+        background: #fff;
+        border-radius: 1px;
+    }
+
+    .layui-iconpicker-icon i {
+        line-height: 26px !important;
+    }
+
+    .layui-iconpicker-item {
+        height: 26px !important;
+    }
+
+    .layui-iconpicker-search .layui-icon {
+        top: 7px !important;
+    }
+
+    .layui-iconpicker .layui-anim {
+        width: 273px;
+    }
+</style>
+<script>
+    layui.use(['jquery', 'form', 'laydate', 'common', 'iconPickerFa', 'optimizeSelectOption', 'layer', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            iconPickerFa = layui.iconPickerFa,
+            common = layui.common,
+            layer = layui.layer,
+            tableSelect = layui.tableSelect,
+            laydate = layui.laydate;
+        var keyValue = $.request("keyValue");
+        //权限字段
+        common.authorizeFields('adminform');
+        var event = $.request("event");
+        // ===== F_Sort（默认排序）：解析/生成工具（与 initControl 共享作用域） =====
+        var FSortDirMap = {}; // 字段 -> asc/desc，面板每次打开时按 F_Sort 原值重建
+        var prevMainView = ''; // 主视图（变更时联动清空默认排序），initControl 回显后取值
+        // 解析紧凑文本：'F_CreatorTime desc,F_EnabledMark asc' -> {F_CreatorTime:'desc',...}
+        function fsortParse(text) {
+            var map = {};
+            String(text || '').split(',').forEach(function (s) {
+                var parts = $.trim(s).split(/\s+/);
+                if (parts[0]) map[parts[0]] = (parts[1] || '').toLowerCase() === 'desc' ? 'desc' : 'asc';
+            });
+            return map;
+        }
+        $(function () {
+            // 记录每行“方向”下拉变更：写回 FSortDirMap 及表格行缓存对象（勾选状态持有同一引用）
+            $(document).on('change', '.ts-fsort-dir', function () {
+                var field = $(this).attr('data-field');
+                var dir = $(this).val();
+                if (!field) return;
+                FSortDirMap[field] = dir;
+                var $view = $(this).closest('.layui-table-view');
+                var tid = $view.attr('lay-table-id') || '';
+                var idx = $(this).closest('tr').attr('data-index');
+                var rows = tid && layui.table ? (layui.table.cache[tid] || []) : null;
+                if (rows && idx != null && rows[idx]) rows[idx].F_SortDir = dir;
+            });
+
+            $("#F_ParentId").bindSelect({
+                url: "/SystemManage/Module/GetTreeSelectJson",
+            });
+            if (event == "edit") {
+                common.ajax({
+                    url: "/SystemManage/Module/GetFormJson",
+                    dataType: "json",
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        var skip = ['F_IsTree'];
+                        $('input[type="checkbox"][name]').each(function () {
+                            var name = $(this).attr('name');
+                            if (skip.indexOf(name) > -1) return;
+                            if (data.hasOwnProperty(name)) {
+                                $(this).prop("checked", !!data[name]);
+                            }
+                        });
+                        LoadIstree(data.F_IsNavi)
+                        if (!!data.F_Icon) {
+                            iconPickerFa.checkIcon('iconPicker', data.F_Icon);
+                        }
+                        if (data.F_IsExpand) {
+                            $('#F_MainView').removeAttr("lay-verify");
+                            $('#F_MainView').parent().prev(".layui-form-label").removeClass("required");
+                        }
+                        else {
+                            $('#F_MainView').attr("lay-verify", "required");
+                            $('#F_MainView').parent().prev(".layui-form-label").addClass("required");
+                        }
+                        if (data.F_IsReport || data.F_IsExpand) {
+                            $('#F_MainTable').removeAttr("lay-verify");
+                            $('#F_MainTable').parent().prev(".layui-form-label").removeClass("required");
+                        }
+                        else {
+                            $('#F_MainTable').attr("lay-verify", "required");
+                            $('#F_MainTable').parent().prev(".layui-form-label").addClass("required");
+                        }
+                    }
+                });
+            }
+            else if (event == "clone") {
+                common.ajax({
+                    url: "/SystemManage/Module/GetFormJson",
+                    dataType: "json",
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                        if (!!data.F_Icon) {
+                            iconPickerFa.checkIcon('iconPicker', data.F_Icon);
+                        }
+                        ParentIdChange(data.F_ParentId);
+                    }
+                });
+            }
+            else {
+                if (!!keyValue) {
+                    $('#F_ParentId').val(keyValue);
+                    ParentIdChange(keyValue);
+                }
+                else {
+                    ParentIdChange(0);
+                }
+            }
+            initControl();
+            form.render();
+
+            // ★ 小计复选框悬停提示：layui 渲染后原生 input 被隐藏，需将提示词同步到自绘容器 div.layui-form-checkbox
+            var bindCheckboxTips = function () {
+                $('.layui-form-checkbox').prev('input[type="checkbox"]').each(function () {
+                    var tips = $(this).data('tips');
+                    if (tips) {
+                        $(this).next('.layui-form-checkbox').attr('title', tips);
+                    }
+                });
+            };
+            bindCheckboxTips();
+
+            // ===== F_IsTree 三态复选框：0=不启用 / 1=半选 / 2=全部（点击循环 0→1→2→0） =====
+            function syncFIsTreeVisual() {
+                var input = $('#F_IsTreeBox')[0];
+                if (!input) return;
+                var box = $(input).next('.layui-form-checkbox');
+                if (!box.length) return;
+                box.removeClass('layui-form-checked tri-half');
+                if (input.checked) box.addClass('layui-form-checked');
+                else if (input.indeterminate) box.addClass('tri-half');
+                $('#F_IsTree').val(input.indeterminate ? 1 : (input.checked ? 2 : 0));
+            }
+            function setFIsTreeState(v) {
+                var input = $('#F_IsTreeBox')[0];
+                if (!input) return;
+                // 兼容存量 true/false（实体/库尚未改为 int 的过渡期）
+                if (v === true || v === 'true') v = 2;
+                else if (v === false || v === '' || v === 'false') v = 0;
+                v = [0, 1, 2].indexOf(+v) > -1 ? +v : 0;
+                input.checked = (v === 2);
+                input.indeterminate = (v === 1); // 浏览器原生半选标记，供读取状态
+                $('#F_IsTree').val(v);
+                syncFIsTreeVisual();
+            }
+            // 回显初始值（编辑/克隆时 hidden 已被 common.val 赋值 0/1/2）
+            setFIsTreeState($('#F_IsTree').val());
+            // 捕获阶段拦截 layui 默认的“勾选↔取消”两态切换，改为三态循环
+            document.addEventListener('click', function (e) {
+                var box = e.target && e.target.closest ? e.target.closest('#F_IsTreeBox + .layui-form-checkbox') : null;
+                if (!box) return;
+                e.stopPropagation();
+                var input = $('#F_IsTreeBox')[0];
+                var cur = input.indeterminate ? 1 : (input.checked ? 2 : 0);
+                setFIsTreeState((cur + 1) % 3); // 0→1→2→0
+            }, true);
+            // layui form.render() 会重建自绘容器，重建后按 input 当前状态恢复三态视觉
+            var FIsTreeObserver = new MutationObserver(function () { syncFIsTreeVisual(); });
+            FIsTreeObserver.observe(document.body, { childList: true, subtree: true });
+        });
+
+        wcLoading.close();
+        form.on('select(F_ParentId)', function (data) {
+            ParentIdChange(data.value);
+        });
+        function ParentIdChange(value) {
+            common.ajax({
+                url: '/SystemManage/Module/GetMaxSortCodeText',
+                dataType: 'text',
+                data: { F_ParentId: value },
+                async: false,
+                success: function (data) {
+                    $('#F_SortCode').val(data);
+                }
+            });
+            return false;
+        }
+        function initControl() {
+            // 主视图初值（用于判断变更后清空默认排序，需在回显后取值）
+            prevMainView = $.trim($('#F_MainView').val() || '');
+            tableSelect.render({
+                elem: '#F_MainTable',
+                checkedKey: 'Name',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_MainTable').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/SystemManage/CodeGenerator/GetViewTableJson?type=1`,
+                    cols: [[{ type: 'radio', fixed: 'left' },
+                    { field: 'Name', title: '对象名称' },
+                    { field: 'Description', title: '对象备注' },
+                    {
+                        field: 'DbObjectKind', title: '类型',
+                        templet: function (d) {
+                            switch (d.DbObjectKind) {
+                                case 'Table':
+                                    return "表";
+                                case 'View':
+                                    return "视图";
+                                case 'Proc':
+                                    return "过程";
+                                case 'Func':
+                                    return "函数";
+                                default:
+                                    return "其他";
+                            }
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.Name).join(',');
+                    // 给输入框赋值
+                    $(elem).val(text.trim());
+                }
+            });
+            tableSelect.render({
+                elem: '#F_MainView',
+                checkedKey: 'Name',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_MainView').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/SystemManage/CodeGenerator/GetViewTableJson?type=2`,
+                    cols: [[{ type: 'radio', fixed: 'left' },
+                    { field: 'Name', title: '对象名称' },
+                    { field: 'Description', title: '对象备注' },
+                    {
+                        field: 'DbObjectKind', title: '类型',
+                        templet: function (d) {
+                            switch (d.DbObjectKind) {
+                                case 'Table':
+                                    return "表";
+                                case 'View':
+                                    return "视图";
+                                case 'Proc':
+                                    return "过程";
+                                case 'Func':
+                                    return "函数";
+                                default:
+                                    return "其他";
+                            }
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.Name).join(',');
+                    // 给输入框赋值
+                    $(elem).val(text.trim());
+                    // 主视图变更时联动清空默认排序，避免沿用旧视图字段
+                    if (text.trim() && text.trim() !== prevMainView) {
+                        $('#F_Sort').val('');
+                    }
+                    prevMainView = text.trim();
+                }
+            });
+            tableSelect.render({
+                elem: '#F_TableName',
+                checkedKey: 'Name',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_TableName').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/SystemManage/CodeGenerator/GetTableJson`,
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'Name', title: '对象名称' },
+                    { field: 'Description', title: '对象备注' },
+                    {
+                        field: 'DbObjectKind', title: '类型',
+                        templet: function (d) {
+                            switch (d.DbObjectKind) {
+                                case 'Table':
+                                    return "表";
+                                case 'View':
+                                    return "视图";
+                                case 'Proc':
+                                    return "过程";
+                                case 'Func':
+                                    return "函数";
+                                default:
+                                    return "其他";
+                            }
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.Name).join(',');
+                    // 给输入框赋值
+                    $(elem).val(text.trim());
+                }
+            });
+            tableSelect.render({
+                elem: '#F_SubObject',
+                checkedKey: 'Name',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: $('#F_SubObject').val().split(',').map((i) => i.trim()),
+                table: {
+                    url: `/SystemManage/CodeGenerator/GetViewTableJson`,
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                    { field: 'Name', title: '对象名称' },
+                    { field: 'Description', title: '对象备注' },
+                    {
+                        field: 'DbObjectKind', title: '类型',
+                        templet: function (d) {
+                            switch (d.DbObjectKind) {
+                                case 'Table':
+                                    return "表";
+                                case 'View':
+                                    return "视图";
+                                case 'Proc':
+                                    return "过程";
+                                case 'Func':
+                                    return "函数";
+                                default:
+                                    return "其他";
+                            }
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 显示名称
+                    var text = checkStatus.data.map(item => item.Name).join(',');
+                    // 给输入框赋值
+                    $(elem).val(text.trim());
+                }
+            });
+            // ===== F_Sort：默认排序（多选主视图字段 + 每行方向下拉：升序/倒序） =====
+            tableSelect.render({
+                elem: '#F_Sort',
+                checkedKey: 'F_EnCode',
+                searchKey: 'keyword',
+                searchPlaceholder: '关键词搜索',
+                height: '200',
+                sameApi: false,
+                selected: Object.keys(fsortParse($('#F_Sort').val())),
+                beforeRender: function (opt) {
+                    var mainView = $.trim($('#F_MainView').val() || '');
+                    if (!mainView) {
+                        layer.msg('请先在“主视图”中选择对象', { icon: 0 });
+                        return false;
+                    }
+                    // 只作为行数据快照供 params 解析，不写回表单控件
+                    opt.rowData = Object.assign({}, opt.rowData || {}, { F_TableName: mainView });
+                    // 依据当前 F_Sort 原值初始化各字段方向
+                    FSortDirMap = fsortParse($('#F_Sort').val());
+                    return true;
+                },
+                table: {
+                    url: `/Public/GetReferenceListJson?enCode=GetObjectFields`,
+                    params: { F_TableName: '' },
+                    cols: [[{ type: 'radio', fixed: 'left' },
+                    { field: 'F_EnCode', title: '字段' },
+                    { field: 'F_FullName', title: '名称' },
+                    {
+                        field: 'F_SortDir', title: '方向', width: 90, align: 'center', unresize: true,
+                        templet: function (d) {
+                            var dir = d.F_SortDir || FSortDirMap[d.F_EnCode] || 'asc';
+                            return '<select lay-ignore class="ts-fsort-dir" data-field="' + d.F_EnCode + '"' +
+                                ' style="width:70px;height:26px;line-height:26px;border:1px solid #e6e6e6;border-radius:2px;background-color:#fff;color:#333;padding:0 2px;cursor:pointer;">' +
+                                '<option value="asc"' + (dir === 'asc' ? ' selected' : '') + '>升序</option>' +
+                                '<option value="desc"' + (dir === 'desc' ? ' selected' : '') + '>倒序</option></select>';
+                        }
+                    }]]
+                },
+                done: function (elem, checkStatus) {
+                    // 紧凑文本：字段 方向,字段 方向...（可读、贴近 ORDER BY 写法）
+                    var text = (checkStatus.data || []).map(function (r) {
+                        return r.F_EnCode + ' ' + (r.F_SortDir || FSortDirMap[r.F_EnCode] || 'asc');
+                    }).join(',');
+                    $(elem).val(text.trim());
+                }
+            });
+        }
+        // 监听 F_IsExpand 复选框
+        form.on('checkbox(F_IsExpand)', function (data) {
+            if (data.elem.checked) {
+                $('#F_MainTable').removeAttr("lay-verify");
+                $('#F_MainTable').parent().prev(".layui-form-label").removeClass("required");
+                $('#F_MainView').removeAttr("lay-verify");
+                $('#F_MainView').parent().prev(".layui-form-label").removeClass("required");
+            }
+            else {
+                $('#F_MainTable').attr("lay-verify", "required");
+                $('#F_MainTable').parent().prev(".layui-form-label").addClass("required");
+                $('#F_MainView').attr("lay-verify", "required");
+                $('#F_MainView').parent().prev(".layui-form-label").addClass("required");
+            }
+            form.render();
+        });
+        form.on('checkbox(F_IsReport)', function (data) {
+            if (data.elem.checked) {
+                $('#F_MainTable').removeAttr("lay-verify");
+                $('#F_MainTable').parent().prev(".layui-form-label").removeClass("required");
+            }
+            else {
+                $('#F_MainTable').attr("lay-verify", "required");
+                $('#F_MainTable').parent().prev(".layui-form-label").addClass("required");
+            }
+            form.render();
+        });
+        window.LoadIstree = function (istree) {
+            if (istree) {
+                $('#F_TreeTableName').removeAttr("disabled");
+                $('#F_TreeTableName').attr("lay-verify", "required");
+                $('#F_TreeTableName').parent().prev(".layui-form-label").addClass("required");
+                tableSelect.render({
+                    elem: '#F_TreeTableName',
+                    checkedKey: 'Name',
+                    searchKey: 'keyword',
+                    searchPlaceholder: '关键词搜索',
+                    height: '200',
+                    sameApi: false,
+                    selected: $('#F_TreeTableName').val().split(',').map((i) => i.trim()),
+                    table: {
+                        url: `/SystemManage/CodeGenerator/GetViewTableJson?type=1&IsNavi=true`,
+                        cols: [[{ type: 'radio', fixed: 'left' },
+                        { field: 'Name', title: '对象名称' },
+                        { field: 'Description', title: '对象备注' },
+                        {
+                            field: 'DbObjectKind', title: '类型',
+                            templet: function (d) {
+                                switch (d.DbObjectKind) {
+                                    case 'Table':
+                                        return "表";
+                                    case 'View':
+                                        return "视图";
+                                    case 'Proc':
+                                        return "过程";
+                                    case 'Func':
+                                        return "函数";
+                                    default:
+                                        return "其他";
+                                }
+                            }
+                        }]]
+                    },
+                    done: function (elem, checkStatus) {
+                        // 显示名称
+                        var text = checkStatus.data.map(item => item.Name).join(',');
+                        // 给输入框赋值
+                        $(elem).val(text.trim());
+                    }
+                });
+            }
+            else {
+                $('#F_TreeTableName').prop("disabled", true);
+                $('#F_TreeTableName').removeAttr("lay-verify");
+                $('#F_TreeTableName').parent().prev(".layui-form-label").removeClass("required");
+            }
+            form.render();
+        }
+        // 监听 F_IsNavi 复选框
+        form.on('checkbox(F_IsNavi)', function (data) {
+            LoadIstree(data.elem.checked)
+        });
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+            var postData = data.field;
+            ['F_EnabledMark', 'F_IsMenu', 'F_IsExpand', 'F_IsPublic', 'F_IsFields', 'F_IsPage', 'F_IsReport',
+                'F_IsNavi', 'F_IsFlow', 'F_IsImport', 'F_IsAlert'
+            ].forEach(function (k) {
+                postData[k] = !!postData[k];
+            });
+            common.submitForm({
+                url: event == "edit" ? "/SystemManage/Module/SubmitForm?keyValue=" + keyValue : "/SystemManage/Module/SubmitForm",
+                param: postData,
+                success: function () {
+                    common.parentreload("data-search-btn");
+                }
+            })
+            return false;
+        });
+        //select验证
+        form.verify({
+            required: function (value, item) {
+                var msg = "必填项不能为空";
+                value = $.trim(value);
+                var isEmpty = !value || value.length < 1;
+                // 当前验证元素是select且为空时,将页面定位至layui渲染的select处，或自定义想定位的位置
+                if (item.tagName == 'SELECT' && isEmpty) {
+                    $("html").animate({
+                        scrollTop: $(item).siblings(".layui-form-select").offset().top - 74
+                    }, 50);
+                }
+                if (isEmpty) {
+                    return msg;
+                }
+            }
+        });
+        iconPickerFa.render({
+            // 选择器，推荐使用input
+            elem: '#iconPicker',
+            // fa 图标接口
+            url: "/lib/font-awesome-4.7.0/less/variables.less",
+            // 是否开启搜索：true/false，默认true
+            search: true,
+            // 是否开启分页：true/false，默认true
+            page: true,
+            // 每页显示数量，默认12
+            limit: 12,
+            // 点击回调
+            click: function (data) {
+                //console.log(data);
+                $("#F_Icon").val("fa " + data.icon);
+            },
+            // 渲染成功后的回调：面板同步插入后，把「清除图标」按钮放在搜索框（放大镜）后面
+            success: function (d) {
+                var $search = d.elem.find('.layui-iconpicker-search');
+                if (!$search.length) return;
+                $search.find('.layui-input').css('width', '68%');
+                $search.find('.layui-icon').css('right', '10%');
+                $('<i class="layui-icon" title="清除图标" style="position:absolute;top:5px;right:4px;cursor:pointer;color:#666;">&#x1006;</i>')
+                    .insertAfter($search.find('.layui-icon'))
+                    .on('click', function (e) {
+                        e.stopPropagation();
+                        clearIcon();
+                    });
+            }
+        });
+    });
+    function clearIcon() {
+        layui.use(['iconPickerFa'], function () {
+            layui.iconPickerFa.checkIcon('iconPicker', "");
+            $("#F_Icon").val("");
+            $("#iconPicker").next(".layui-iconpicker").removeClass("layui-form-selected");
+        });
+    }
+</script>
+<style type="text/css">
+    .layui-form-checkbox[lay-skin="primary"]>div {
+        padding-right: 10px !important;
+    }
+
+    .layuimini-form>.layui-form-item>.layui-input-block {
+        margin-left: 110px !important;
+    }
+
+    .layuimini-form>.layui-form-item>.layui-form-label {
+        width: 80px !important;
+    }
+</style>
+
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">上级</label>
+                        <div class="layui-input-block">
+                            <select id="F_ParentId" name="F_ParentId" lay-verify="required" lay-filter="F_ParentId"
+                                lay-search>
+                                <option value="0" selected>父节点</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">编号</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_EnCode" name="F_EnCode" maxlength="50" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">名称</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_FullName" name="F_FullName" maxlength="7" lay-verify="required"
+                                class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">主表</label>
+                        <div class="layui-input-block">
+                            <input id="F_MainTable" type="text" name="F_MainTable" lay-verify="required" readonly
+                                class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">连接</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_UrlAddress" name="F_UrlAddress" maxlength="50"
+                                class="layui-input ">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">主视图</label>
+                        <div class="layui-input-block" style="display:flex">
+                            <input id="F_MainView" type="text" style="width:140px;margin-right: 2px;" name="F_MainView"
+                                lay-verify="required" readonly class="layui-input">
+                            <input id="F_Sort" type="text" name="F_Sort" readonly class="layui-input"
+                                placeholder="排序字段">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">权限</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Authorize" name="F_Authorize" maxlength="100" class="layui-input ">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">子对象</label>
+                        <div class="layui-input-block">
+                            <input id="F_SubObject" type="text" name="F_SubObject" title="表单table绑定的对象" readonly
+                                class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">目标</label>
+                        <div class="layui-input-block">
+                            <select id="F_Target" name="F_Target" lay-verify="required">
+                                <option value="">==请选择==</option>
+                                <option value="expand" title="expand">无页面</option>
+                                <option value="iframe" title="iframe">框架页</option>
+                                <option value="open" title="open">弹出页</option>
+                                <option value="blank" title="blank">新窗口</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">其它对象</label>
+                        <div class="layui-input-block">
+                            <input id="F_TableName" type="text" name="F_TableName" readonly class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label required">显示顺序</label>
+                        <div class="layui-input-block">
+                            <input type="number" pattern="[0-9]*" id="F_SortCode" name="F_SortCode"
+                                lay-verify="required|number" oninput="if(value.length>8)value=value.slice(0,8)"
+                                autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">导航数据</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_TreeTableName" name="F_TreeTableName" disabled placeholder="导航数据表"
+                                maxlength="100" class="layui-input ">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">图标</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_Icon" name="F_Icon" class="layui-input layui-hide">
+                            <input type="text" id="iconPicker" @*value="fa fa-file-image-o" *@ lay-filter="iconPicker"
+                                class="layui-input layui-hide">
+                            @* 「清除图标」按钮由 iconPickerFa.render 的 success 回调插入到面板搜索框（放大镜）后面 *@
+                        </div>
+                    </div>
+                    <div class="layui-col-md6 layui-col-sm6 layui-hide">
+                        <label class="layui-form-label">编号规则</label>
+                        <div class="layui-input-block">
+                            <input type="text" id="F_NumberRules" name="F_NumberRules" autocomplete="off"
+                                placeholder="[前缀][yyyyMMdd][位数][字段名]" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">选项</label>
+                    <div class="layui-input-block">
+                        <input id="F_IsMenu" name="F_IsMenu" type="checkbox" value="true" title="菜单">
+                        <input id="F_IsExpand" name="F_IsExpand" type="checkbox" value="true" lay-filter="F_IsExpand"
+                            title="展开">
+                        <input id="F_IsPublic" name="F_IsPublic" type="checkbox" value="true" title="公共">
+                        <input id="F_IsFields" name="F_IsFields" type="checkbox" value="true" title="字段">
+                        <input id="F_EnabledMark" name="F_EnabledMark" type="checkbox" value="true" title="有效">
+                        <input id="F_IsPage" name="F_IsPage" type="checkbox" value="true" data-tips="数据分页显示" title="分页">
+                        <input type="hidden" id="F_IsTree" name="F_IsTree" value="0">
+                        <input id="F_IsTreeBox" type="checkbox" lay-skin="primary" lay-filter="F_IsTree" value="2"
+                            data-tips="启用树形显示模式（半选:折叠/全选:展开）" title="树形">
+                        <input id="F_IsReport" name="F_IsReport" type="checkbox" lay-filter="F_IsReport" value="true"
+                            data-tips="启用报表显示模式" title="报表">
+                        <input id="F_IsNavi" name="F_IsNavi" type="checkbox" lay-filter="F_IsNavi" value="true"
+                            data-tips="启用左侧树形导航栏" title="导航">
+                        <input id="F_IsFlow" name="F_IsFlow" type="checkbox" value="true" data-tips="启用工作流控制"
+                            title="流程">
+                        <input id="F_IsImport" name="F_IsImport" type="checkbox" lay-filter="F_IsImport" value="true"
+                            data-tips="启用导入功能" title="导入">
+                        <input id="F_IsAlert" name="F_IsAlert" type="checkbox" lay-filter="F_IsAlert" value="true"
+                            data-tips="启用弹窗提醒" title="提醒">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-form-text layui-hide">
+                    <label class="layui-form-label">消息模板</label>
+                    <div class="layui-input-block">
+                        <textarea id="F_MsgTemplate" name="F_MsgTemplate" class="layui-textarea"
+                            placeholder="推送微信消息的模板"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-form-text layui-hide">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <textarea id="F_Description" name="F_Description" class="layui-textarea"
+                            placeholder="请输入备注"></textarea>
+                    </div>
+                </div>
+
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
