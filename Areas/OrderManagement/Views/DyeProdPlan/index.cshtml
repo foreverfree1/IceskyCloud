@@ -1,0 +1,728 @@
+@{
+    ViewBag.Title = "染色排产";
+    Layout = "~/Views/Shared/_Index.cshtml";
+}
+<style>
+    /* ========== 页面布局：整页不滚，只滚看板，表头和行号才能吸住 ========== */
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+    }
+    .layuimini-container {
+        height: calc(100vh - 10px);
+        overflow: hidden;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+    .layuimini-main {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    /* ========== 顶部搜索：标签宽度跟文字走，和看板左对齐 ========== */
+    .dye-board-search {
+        display: flex;
+        gap: 10px;
+    }
+    .dye-board-search .layui-form-item {
+        display: flex;
+    }
+    .dye-board-search-btn {
+        height: 28px;
+        line-height: 28px;
+    }
+    /* ========== 图例、统计 ========== */
+    #stats {
+        font-size: 12px;
+        color: #718095;
+        margin-left: auto;
+    }
+    .dye-legend-row {
+        display: flex;
+        padding: 10px 0;
+    }
+    .dye-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        font-size: 12px;
+        color: #203047;
+    }
+    .dye-legend .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    /* ========== 看板表格：横向纵向滚动，机台表头吸顶，行号吸左 ========== */
+    .dye-board-main {
+        background: #fff;
+        border: 1px solid #d4dbe4;
+        overflow: auto;
+        flex: 1;
+        min-height: 0;
+    }
+    #board {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: max-content;
+        table-layout: fixed;
+    }
+    #board th,
+    #board td {
+        border-right: 1px solid #d4dbe4;
+        border-bottom: 1px solid #d4dbe4;
+    }
+    #board thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f5f7fa;
+        padding: 8px 12px;
+        color: #165d9e;
+        font-size: 18px;
+        font-weight: 500;
+    }
+    #board thead small {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        color: #8593a5;
+    }
+    #board thead th:not(:first-child),
+    #board tbody td {
+        width: 250px;
+    }
+    #board thead th:first-child,
+    #board tbody th {
+        min-width: 64px;
+        width: 64px;
+        max-width: 64px;
+        position: sticky;
+        left: 0;
+        background: #f5f7fa;
+    }
+    #board thead th:first-child {
+        z-index: 4;
+    }
+    #board tbody th {
+        z-index: 3;
+        color: #1666ac;
+        font-weight: 400;
+        font-size: 19px;
+    }
+    #board tbody td {
+        height: 248px;
+        padding: 9px;
+        vertical-align: top;
+    }
+    #board td[data-equip] {
+        cursor: pointer;
+        outline-offset: -3px;
+    }
+    #board td[data-equip]:hover,
+    #board td[data-equip].search-match {
+        background: #edf6ff;
+        outline: 2px solid #78b5ed;
+    }
+    /* ========== 排产卡片：内容多撑高格子，不内部滚动 ========== */
+    #board .card {
+        display: flex;
+        flex-direction: column;
+        min-height: 230px;
+        height: 100%;
+        border-left: 4px solid var(--tone);
+        background: color-mix(in srgb, var(--tone) 9%, white);
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    #board .rich-card-header {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        gap: 10px;
+        padding: 9px 12px;
+        border-bottom: 1px solid color-mix(in srgb, var(--tone) 17%, white);
+    }
+    #board .rich-card-header em,
+    #board .rich-card-header > span {
+        font-style: normal;
+        font-size: 11px;
+        color: #758197;
+    }
+    #board .card-acts {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        margin-left: auto;
+    }
+    #board .card-acts button {
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #5d738c;
+        font-size: 13px;
+        line-height: 22px;
+        cursor: pointer;
+    }
+    #board .card-acts button:hover {
+        background: #ffffffb3;
+        color: #203047;
+    }
+    #board .card-acts .card-act-cancel {
+        color: #c45a5a;
+        font-size: 16px;
+    }
+    #board .card-acts .card-act-cancel:hover {
+        background: #fde8e8;
+        color: #b42318;
+    }
+    #board .rich-card-body {
+        flex: 1 0 auto;
+        padding: 9px 12px;
+    }
+    #board .flow-number {
+        font-size: 11px;
+        color: #7f8da1;
+        margin-bottom: 7px;
+    }
+    #board .card-field {
+        display: grid;
+        grid-template-columns: 100px minmax(0, 1fr);
+        gap: 5px;
+        margin-bottom: 7px;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    #board .card-field > span {
+        color: #76869a;
+    }
+    #board .card-field > b {
+        font-size: 12px;
+        font-weight: 500;
+        color: #2b4059;
+        overflow-wrap: anywhere;
+    }
+    #board .card-field.flow-code > b {
+        font-weight: 700;
+        color: #235982;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    #board .card-field.flow-code > b > span.is-repair {
+        color: #df5252;
+    }
+    #board .flow-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 10px;
+        font-size: 11px;
+        color: #6c7f94;
+        padding-top: 4px;
+    }
+    #board .rich-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+        gap: 8px;
+        padding: 9px 12px;
+        background: #ffffff80;
+        border-top: 1px solid #dce5ef;
+        font-size: 11px;
+        color: #708299;
+    }
+    #board .rich-card-footer > b {
+        font-size: 13px;
+        color: #284a6c;
+    }
+    #board .rich-card[data-text-tone],
+    #board .rich-card[data-text-tone] .rich-card-header em,
+    #board .rich-card[data-text-tone] .rich-card-header > span,
+    #board .rich-card[data-text-tone] .card-field > span,
+    #board .rich-card[data-text-tone] .card-field > b,
+    #board .rich-card[data-text-tone] .flow-number,
+    #board .rich-card[data-text-tone] .flow-metrics,
+    #board .rich-card[data-text-tone] .rich-card-footer,
+    #board .rich-card[data-text-tone] .rich-card-footer > b {
+        color: var(--text-tone);
+    }
+</style>
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        @* 流程卡号定位，排缸在表单右侧 *@
+        <div class="layui-form layuimini-form dye-board-search" lay-filter="adminform">
+            <div class="form-fields"></div>
+            @* 修改内容：排缸按钮对上模块配置才插入，不写死 *@
+            <span id="planWrap"></span>
+        </div>
+        @* 状态颜色图例，右侧机台/已排/待排统计 *@
+        <div class="dye-legend-row">
+            <div class="dye-legend" id="legend"></div>
+            <span id="stats"></span>
+        </div>
+        @* 排缸看板，没机台时只显示空框 *@
+        <div class="dye-board-main">
+            <table id="board"></table>
+        </div>
+    </div>
+</div>
+<script>
+    /**
+     * 染色排产看板
+     * 表头：prod_dyeprodplan_equipmentledger，arguments 传 ['']
+     * 表体：prod_dyeprodplan_out，arguments 传 ['']
+     * 待排：dyeprodplan_ProcessCode_Count，arguments 传 ['']，条数即待排张数
+     * boardHead：机台列；boardBody[行号-1][机台列下标]：该格子的排产，空格子为 null
+     */
+    layui.use(['jquery', 'common', 'commonForm'], function () {
+        var $ = layui.jquery,
+            common = layui.common,
+            commonForm = layui.commonForm;
+
+        wcLoading.close();
+
+        // 卡片色：正常 / 拼缸；文字色：回修 / 加急 / 特急
+        var colors = {
+            '正常': '#167ac6',
+            '拼缸': '#e69a25',
+            '回修': '#df5252',
+            '加急': '#8653bf',
+            '特急': '#50a879'
+        };
+        var rowCount = 0;
+        var waitCount = 0;
+        var locateTimer = 0;
+        // 修改内容：按钮走模块配置（和 createTool / createTableTool 同一套 GetBtnListJson）
+        var toolPack = common.createTableTool({
+            id: 'view_prod_dyeprodplan_out',
+            enCode: 'prod_dyeprodplan_out',
+            toolbar: false
+        });
+        var moduleBtns = toolPack.btns || [];
+        if (!moduleBtns.length) {
+            var btnUrlKey = window.location.pathname || '';
+            try {
+                if ((window.parent.location.href || '').indexOf('/Module') > -1) {
+                    btnUrlKey = btnUrlKey.replace(btnUrlKey.split('/')[1], 'Module');
+                }
+            } catch (e) { }
+            btnUrlKey = btnUrlKey.replace(/Form([^\/]*)$/, 'Index');
+            moduleBtns = ((common._moduleBtnListCache || {})[btnUrlKey] || []).filter(function (x) { return x.F_EnabledMark; });
+        }
+        function findModuleBtn(jsEvent) {
+            var names = String(jsEvent || '').toLowerCase().split('|');
+            var hit = null;
+            $.each(names, function (n, name) {
+                name = $.trim(name);
+                if (!name || hit) return;
+                $.each(moduleBtns, function (i, b) {
+                    if (String(b.F_JsEvent || '').toLowerCase() === name) { hit = b; return false; }
+                });
+                if (hit) return;
+                $.each(moduleBtns, function (i, b) {
+                    if (String(b.F_EnCode || '').toLowerCase() === 'nf-' + name) { hit = b; return false; }
+                });
+            });
+            return hit;
+        }
+        function allowBtn(jsEvent) {
+            var btn = findModuleBtn(jsEvent);
+            // 修改内容：配置对不上就不显示，不用写死的按钮
+            if (!btn) return false;
+            // if (!btn) return true;
+            return common.authorizeButtonOne(btn.F_EnCode);
+        }
+        function btnUrl(jsEvent, fallback) {
+            var btn = findModuleBtn(jsEvent);
+            return (btn && btn.F_UrlAddress) || fallback || '';
+        }
+        function btnTitle(jsEvent, fallback) {
+            var btn = findModuleBtn(jsEvent);
+            return (btn && btn.F_FullName) || fallback || '';
+        }
+        // 修改内容：地址只取配置，对不上不写死 Form 路径
+        var formUrl = btnUrl('add') || btnUrl('details') || btnUrl('edit') || '';
+
+        /**
+         * 调 Public/GetList
+         * param {string} enCode 方案编码
+         * returns {Array} 行数组
+         */
+        function getList(enCode) {
+            var list = [];
+            common.ajax({
+                url: '/Public/GetList?enCode=' + enCode,
+                dataType: 'json',
+                data: { param: JSON.stringify({ arguments: [''] }) },
+                async: false,
+                success: function (res) {
+                    list = $.isArray(res) ? res : ((res && res.data) || []);
+                }
+            });
+            return list;
+        }
+        var boardHead = getList('prod_dyeprodplan_equipmentledger'); // 机台表头
+        var boardBody = []; // 二维表体：boardBody[行][列]
+
+        function tip(text, type) {
+            common.modalMsg(text, type);
+        }
+        // 转义 HTML，避免机台号、客户名里的特殊字符破坏页面
+        function esc(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+            });
+        }
+        // 机台号在表头里的列下标，找不到返回 -1
+        function colOf(equipCode) {
+            var col = -1;
+            $.each(boardHead, function (i, equip) {
+                if (equip.F_EquipCode === equipCode) {
+                    col = i;
+                    return false;
+                }
+            });
+            return col;
+        }
+        // 一行空格子，长度 = 机台数
+        function emptyRow() {
+            var row = [];
+            var c;
+            for (c = 0; c < boardHead.length; c++) row.push(null);
+            return row;
+        }
+        // 接口一行原样放进格子：列=F_EquipCode，行=F_SortCode
+        function putPlan(item) {
+            var col = colOf(item.F_EquipCode);
+            var pos = Number(item.F_SortCode || 0);
+            if (col < 0 || pos < 1) return;
+            while (boardBody.length < pos) boardBody.push(emptyRow());
+            if (pos > rowCount) rowCount = pos;
+            boardBody[pos - 1][col] = item;
+        }
+        // 拉表体。行数由 putPlan 按最大 F_SortCode 更新
+        function loadBody() {
+            boardBody = [];
+            rowCount = 0;
+            $.each(getList('prod_dyeprodplan_out'), function (i, item) {
+                putPlan(item);
+            });
+        }
+        // 遍历所有非空格子
+        function eachPlan(fn) {
+            $.each(boardBody, function (r, row) {
+                $.each(row, function (c, plan) {
+                    if (plan) fn(plan, r, c);
+                });
+            });
+        }
+        // 某一机台列里最大的 F_SortCode（没有卡片为 0）
+        function colMaxSort(equipCode) {
+            var c = colOf(equipCode);
+            var max = 0;
+            if (c < 0) return 0;
+            $.each(boardBody, function (r, row) {
+                if (row[c] && r + 1 > max) max = r + 1;
+            });
+            return max;
+        }
+        // 按机台号 + 行号取这一格
+        function findPlan(equip, pos) {
+            var c = colOf(equip);
+            if (c < 0 || pos < 1 || pos > boardBody.length) return null;
+            return boardBody[pos - 1][c] || null;
+        }
+        // 流程卡原文，按逗号拆开
+        function splitCodes(plan) {
+            return $.grep(String(plan.F_ProcessCode || '').split(','), function (code) { return $.trim(code); });
+        }
+        // 只显示 | 前面的卡号
+        function codeShow(raw) {
+            var text = $.trim(raw);
+            var cut = text.indexOf('|');
+            return cut >= 0 ? $.trim(text.substring(0, cut)) : text;
+        }
+        // 文字色：特急 > 加急 > 回修（状态/优先级，或首张流程卡带回修）
+        function textToneName(plan) {
+            var p = plan.F_TaskPriorityName || '';
+            var s = plan.F_StatusName || '';
+            var first = splitCodes(plan)[0] || '';
+            if (p === '特急' || s === '特急') return '特急';
+            if (p === '加急' || s === '加急') return '加急';
+            if (p === '回修' || s === '回修' || first.indexOf('回修') >= 0) return '回修';
+            return '';
+        }
+        function isDyeing(plan) {
+            return plan && plan.F_StatusName === '在染';
+        }
+        function renderLegend() {
+            var html = '';
+            $.each(colors, function (name, color) {
+                html += '<span><i class="dot" style="background:' + color + '"></i>' + name + '</span>';
+            });
+            $('#legend').html(html);
+        }
+        function fieldHtml(label, value) {
+            return '<div class="card-field"><span>' + label + '</span><b>' + esc(value || '待补充') + '</b></div>';
+        }
+        // 子卡带回修时只给那一行上色；整卡回修由 data-text-tone 处理
+        function flowCodeField(plan) {
+            var items = splitCodes(plan);
+            var html = '';
+            if (!items.length) return '<div class="card-field flow-code"><span>流程卡号</span><b>待补充</b></div>';
+            $.each(items, function (i, raw) {
+                var repair = i > 0 && String(raw).indexOf('回修') >= 0;
+                html += '<span' + (repair ? ' class="is-repair"' : '') + '>' + esc(codeShow(raw) || '待补充') + '</span>';
+            });
+            return '<div class="card-field flow-code"><span>流程卡号</span><b>' + html + '</b></div>';
+        }
+        // 黄底仅拼缸；文字色加急/特急/回修
+        function renderPlanCard(plan) {
+            var toneName = textToneName(plan);
+            var textTone = toneName ? colors[toneName] : '';
+            var statusName = plan.F_StatusName || '正常';
+            if (statusName === '回修' && (toneName === '加急' || toneName === '特急')) statusName = toneName;
+            var cardCount = splitCodes(plan).length || 1;
+            var pieceCount = Number(plan.F_TotalPieceCount != null ? plan.F_TotalPieceCount : plan.F_PieceCount || 0);
+            var weight = Number(plan.F_TotalWeight != null ? plan.F_TotalWeight : plan.F_Weight || 0);
+            var pos = Number(plan.F_SortCode || 0);
+            var maxPos = colMaxSort(plan.F_EquipCode);
+            var dyeing = isDyeing(plan);
+            var acts = '<div class="card-acts">';
+            if (allowBtn('up') && !dyeing && pos > 1 && !isDyeing(findPlan(plan.F_EquipCode, pos - 1))) {
+                acts += '<button type="button" class="card-act" data-act="up" title="上移">↑</button>';
+            }
+            if (allowBtn('down') && !dyeing && pos < maxPos && !isDyeing(findPlan(plan.F_EquipCode, pos + 1))) {
+                acts += '<button type="button" class="card-act" data-act="down" title="下移">↓</button>';
+            }
+            if (allowBtn('delete|cancel') && !dyeing) acts += '<button type="button" class="card-act card-act-cancel" data-act="cancel" title="取消排缸">×</button>';
+            acts += '</div>';
+            return '<div class="card rich-card"' + (textTone ? ' data-text-tone="true"' : '') +
+                ' style="--tone:' + (plan.F_IsBothName === '是' ? colors['拼缸'] : colors['正常']) +
+                ';--text-tone:' + (textTone || 'inherit') + '">' +
+                '<div class="rich-card-header"><em>● ' + esc(statusName) + '</em><span>' + esc(plan.F_TaskPriorityName || '普通') + '</span>' + acts + '</div>' +
+                '<div class="rich-card-body">' +
+                fieldHtml('客户名称', plan.F_CusName) +
+                flowCodeField(plan) +
+                fieldHtml('缸号 / 生产序号', (plan.F_LotCode || '待补充') + ' / ' + pos) +
+                fieldHtml('品名', plan.F_MatName) +
+                fieldHtml('色号 / 色名', (plan.F_ColorNo || '待补充') + ' / ' + (plan.F_Color || '待补充')) +
+                '<div class="flow-metrics"><span>' + Number(plan.F_PieceCount || 0) + ' 匹</span><span>' + Number(plan.F_Weight || 0).toFixed(1) + ' kg</span>' +
+                (plan.F_Width ? '<span>门幅 ' + esc(plan.F_Width) + '</span>' : '') +
+                (plan.F_GramWeight ? '<span>克重 ' + esc(plan.F_GramWeight) + '</span>' : '') +
+                '</div></div>' +
+                '<div class="rich-card-footer"><span>' + cardCount + ' 张流程卡 · ' + pieceCount + ' 匹</span><b>' + weight.toFixed(1) + ' kg</b></div></div>';
+        }
+        // 画整张看板。没有机台时只留空框；有机台则表头机台 + 行号 + 卡片/空格
+        function render() {
+            var html = '';
+            var pos;
+            var shown = 0;
+            if (!boardHead.length) {
+                $('#board').html('');
+            } else {
+                html = '<thead><tr><th>序号</th>';
+                $.each(boardHead, function (i, equip) {
+                    html += '<th>' + esc(equip.F_EquipCode) + '<small>' + esc(equip.F_EquipName) + ' · ' + esc(equip.F_MaxCount || '未维护') + ' kg</small></th>';
+                });
+                html += '</tr></thead><tbody>';
+                for (pos = 1; pos <= rowCount; pos++) {
+                    html += '<tr><th>' + pos + '</th>';
+                    $.each(boardHead, function (i, equip) {
+                        var plan = boardBody[pos - 1] ? boardBody[pos - 1][i] : null;
+                        if (plan) {
+                            shown++;
+                            html += '<td data-equip="' + esc(equip.F_EquipCode) + '" data-pos="' + pos + '">' + renderPlanCard(plan) + '</td>';
+                        } else {
+                            html += '<td></td>';
+                        }
+                    });
+                    html += '</tr>';
+                }
+                $('#board').html(html + '</tbody>');
+            }
+            $('#stats').text(boardHead.length + ' 台机台 · 当日已排 ' + shown + ' 缸 · 待排 ' + waitCount + ' 张');
+        }
+        function searchBoard() {
+            waitCount = getList('dyeprodplan_ProcessCode_Count').length;
+            loadBody();
+            render();
+        }
+        // 按流程卡号滚到那张卡，高亮 3 秒，不筛选看板
+        function locateCard(code) {
+            code = $.trim(code || '');
+            $('#board td.search-match').removeClass('search-match');
+            if (locateTimer) clearTimeout(locateTimer);
+            if (!code) return;
+            var found = null;
+            eachPlan(function (plan) {
+                if (found) return;
+                if (String(plan.F_ProcessCode || '').indexOf(code) >= 0) found = plan;
+            });
+            if (!found) {
+                tip('未找到该排缸', 'warning');
+                return;
+            }
+            var $td = $('#board td[data-equip]').filter(function () {
+                return $(this).attr('data-equip') === found.F_EquipCode && String($(this).attr('data-pos')) === String(found.F_SortCode);
+            });
+            var $box = $('.dye-board-main');
+            if ($td.length && $box.length) {
+                var tdRect = $td[0].getBoundingClientRect();
+                var boxRect = $box[0].getBoundingClientRect();
+                var top = $box[0].scrollTop + tdRect.top - boxRect.top - (boxRect.height - tdRect.height) / 2;
+                var left = $box[0].scrollLeft + tdRect.left - boxRect.left - (boxRect.width - tdRect.width) / 2;
+                $box.stop(true).animate({ scrollTop: top, scrollLeft: left }, 420);
+            }
+            $td.addClass('search-match');
+            locateTimer = setTimeout(function () {
+                $td.removeClass('search-match');
+            }, 3000);
+        }
+        // 改一条排产的生产序号 F_SortCode
+        function updateSort(id, pos) {
+            var ok = false;
+            common.ajax({
+                type: 'POST',
+                url: '/OrderManagement/DyeProdPlan/UpdateSortCode',
+                data: { fieldName: 'F_SortCode', fieldValue: pos, keyValue: id },
+                async: false,
+                success: function (result) {
+                    if (result && result.state == 'success') {
+                        ok = true;
+                    } else {
+                        tip('修改失败：' + ((result && result.message) || ''), 'error');
+                    }
+                }
+            });
+            return ok;
+        }
+        // 同一机台列上下换格。offset -1 上移，1 下移
+        function movePlan(plan, offset) {
+            var pos = Number(plan.F_SortCode || 0);
+            var target = pos + offset;
+            var c = colOf(plan.F_EquipCode);
+            var other;
+            if (!plan) return false;
+            if (target < 1 || target > colMaxSort(plan.F_EquipCode) || c < 0) return false;
+            other = boardBody[target - 1][c];
+            if (other && !updateSort(other.F_Id, pos)) return false;
+            if (!updateSort(plan.F_Id, target)) return false;
+            tip(offset < 0 ? '上移成功' : '下移成功', 'success');
+            searchBoard();
+            return true;
+        }
+        // 取消排缸：二次确认后调删除接口
+        function cancelPlan(plan) {
+            if (!plan || isDyeing(plan)) {
+                tip('在染不能取消', 'warning');
+                return;
+            }
+            common.modalConfirm('注：您确定要取消该排缸吗？', function (ok) {
+                if (!ok) return;
+                common.ajax({
+                    url: '/Module/DyeProdPlan/DeleteForm',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        deleteparams: JSON.stringify([
+                            { table: 'prod_dyeprodplan', primary: 'F_Id' },
+                            { table: 'prod_dyeprodplan_list', primary: 'F_PrimaryId' }
+                        ]),
+                        keyValue: plan.F_Id
+                    },
+                    async: false,
+                    success: function (res) {
+                        if (res && res.state == 'success') {
+                            tip('取消排缸成功', 'success');
+                            searchBoard();
+                        } else {
+                            tip((res && res.message) || '删除失败', 'error');
+                        }
+                    }
+                });
+            });
+        }
+        // 从格子上的 data-equip、data-pos 找回排产
+        function planFromCell(td) {
+            return findPlan(td.getAttribute('data-equip'), Number(td.getAttribute('data-pos')));
+        }
+
+        // 已排接口，面板同时显示缸号和流程卡号
+        commonForm.createForm({
+            elem: '.form-fields',
+            enCode: 'prod_dyeprodplan_out',
+            setCustomConfig: function (item, col) {
+                col.canInput = false;
+                if (item.id == 'F_ProcessCode') {
+                    col.on.change = function (elem) {
+                        locateCard($(elem).val());
+                    };
+                }
+            }
+        });
+        // 打开排缸表单。详情传 keyValue。新增时给子页一个回传方法，关掉后再定位
+        // 修改内容：地址 / 标题取按钮配置 F_UrlAddress、F_FullName
+        function openPlanForm(title, keyValue, url) {
+            var locateCode = '';
+            var opts = {
+                title: title,
+                url: url || formUrl,
+                width: '1000px',
+                height: '600px',
+                success: function (layero) {
+                    if (keyValue) return;
+                    layero.find('iframe')[0].contentWindow.parentCallBack = function (code) {
+                        locateCode = code;
+                    };
+                },
+                end: function () {
+                    searchBoard();
+                    if (locateCode) locateCard(locateCode);
+                }
+            };
+            if (keyValue) opts.param = { keyValue: keyValue };
+            common.modalOpen(opts);
+        }
+        // 修改内容：对上 add 配置才画出按钮，名称/地址用配置，对不上不显示
+        (function bindPlanBtn() {
+            var addBtn = findModuleBtn('add');
+            if (!addBtn || !common.authorizeButtonOne(addBtn.F_EnCode) || !addBtn.F_UrlAddress) return;
+            var $btn = $('<button type="button" class="layui-btn dye-board-search-btn" id="plan"><i class="layui-icon">&#xe654;</i> ' + (addBtn.F_FullName || '') + '</button>');
+            $('#planWrap').append($btn);
+            $btn.on('click', function () {
+                openPlanForm(addBtn.F_FullName || '', '', addBtn.F_UrlAddress);
+            });
+        })();
+        // 点有内容的格子打开详情
+        $('#board').on('click', 'td[data-equip]', function () {
+            var plan = planFromCell(this);
+            var detailBtn = findModuleBtn('details') || findModuleBtn('edit');
+            // 修改内容：详情/编辑对不上就不打开，不用写死标题和地址
+            if (!plan || !detailBtn || !detailBtn.F_UrlAddress) return;
+            if (!common.authorizeButtonOne(detailBtn.F_EnCode)) return;
+            openPlanForm(detailBtn.F_FullName || '', plan.F_Id, detailBtn.F_UrlAddress);
+        });
+        // 卡片右上角上移 / 下移 / 取消，阻止冒泡避免同时打开详情
+        $('#board').on('click', '.card-act', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var plan = planFromCell($(this).closest('td[data-equip]')[0]);
+            var act = $(this).attr('data-act');
+            if (!plan) return;
+            if (act === 'cancel') cancelPlan(plan);
+            else movePlan(plan, act === 'up' ? -1 : 1);
+        });
+        renderLegend();
+        searchBoard();
+    });
+</script>
