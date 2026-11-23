@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>@ViewBag.Title</title>
+    <link href="~/lib/font-awesome-4.7.0/css/font-awesome.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" rel="stylesheet" />
+    <script src="~/lib/jquery-3.4.1/jquery-3.4.1.min.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()" charset="utf-8"></script>
+    <link rel="stylesheet" href="~/js/lay-module/dtree/dtree.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()">
+    <link rel="stylesheet" href="~/js/lay-module/dtree/font/dtreefont.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()">
+    <script src="~/js/framework-clientdata.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()"></script>
+    <script src="~/js/framework-ui.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()"></script>
+    <script src="~/lib/layui-v2.13.9/layui.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()"></script>
+    <link rel="stylesheet" href="~/lib/layui-v2.13.9/css/layui.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <link rel="stylesheet" href="~/css/public.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <script src="~/js/lay-config.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()" charset="utf-8"></script>
+    <link href="~/css/iceskycloud.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" rel="stylesheet" />
+    <link rel="stylesheet" href="~/js/lay-module/loading/wcLoading.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <link rel="stylesheet" href="~/css/soulTable.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <script src="~/js/lay-module/loading/wcLoading.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()" charset="utf-8"></script>
+</head>
+<body>
+    @RenderBody()
+    @Html.AntiForgeryToken()
+</body>
+</html>

@@ -1,0 +1,29 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+@if (ViewData["FormCode"] != null)
+{
+    @Html.Raw(ViewData["FormCode"].ToString())
+
+}
+else
+{
+    <div style="padding: 20px; color: #999; text-align: center;">未找到对应的模块表单配置</div>
+}
+
+<script>
+    layui.use(['common', 'form'], function () {
+        var common = layui.common;
+        var observer = new MutationObserver(function () {
+            var formfields = layui.$('[lay-filter="adminform"] div.form-fields').html();
+            //字段加载完成后才执行
+            if (formfields) {
+                observer.disconnect();
+                common.setReadOnly('adminform');
+                layui.form.render();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
+</script>

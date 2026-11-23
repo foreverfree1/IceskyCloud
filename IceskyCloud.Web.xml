@@ -1,0 +1,2276 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>IceskyCloud.Web</name>
+    </assembly>
+    <members>
+        <member name="T:IceskyCloud.Web.Areas.AdminManage.Controllers.EwFeeController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：月度水电录入控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AdminManage.Controllers.EwFeeController.GetLastElecNumListJson(System.String,System.String,System.String)">
+            <summary>
+            获取员工的上次水电费读数
+            </summary>
+            <param name="houseCode">楼栋号</param>
+            <param name="roomCode">房间号</param>
+            <param name="employeeCode">员工工号</param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AdminManage.Controllers.MoveIntoController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：员工宿舍入住控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AdminManage.Controllers.MoveOutController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：员工退宿控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.BusinesStripController">
+            <summary>
+            创建：lx
+            日期：2026-05-11
+            描述：出差申请表控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.BusinesStripController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.BusinesStripController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.BusinesStripController.SubmitForm(System.String,System.String,System.String,System.Int32)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.BusinesStripController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.CheckRecordController">
+            <summary>
+            创建：lx
+            日期：2026-05-08
+            描述：打卡记录表控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.CheckRecordController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.CheckRecordController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.CheckRecordController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.CheckRecordController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ExceptionappealController">
+            <summary>
+            创建：
+            日期：2026-05-11
+            描述：异常申诉控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.LeavereQuestController">
+            <summary>
+            创建：lx
+            日期：2026-05-09
+            描述：请假申请控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.LeavereQuestController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.LeavereQuestController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.LeavereQuestController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.LeavereQuestController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.MonthlyAttendanceController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 13:56
+            描 述：考勤报表控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ScheduleController">
+            <summary>
+            创建：lx
+            日期：2026-05-07
+            描述：排班表控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ScheduleController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ScheduleController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ScheduleController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ScheduleController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ScheduleController.DeletesForm(System.Collections.Generic.List{System.String})">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftlistruleController">
+            <summary>
+            创建：lx
+            日期：2026-05-07
+            描述：轮班规则控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftlistruleController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftlistruleController.GetUselessListJson(System.String)">
+            <summary>
+            获取有效轮班规则
+            </summary>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftlistruleController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftlistruleController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftlistruleController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftRulesController">
+            <summary>
+            创建：
+            日期：2026-05-06
+            描述：班次规则控制器
+            </summary>
+            
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftswapController">
+            <summary>
+            创建：lx
+            日期：2026-05-08
+            描述：调班登记控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftswapController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftswapController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftswapController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.ShiftswapController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.AttendanceManagement.Controllers.WorkoverTime">
+            <summary>
+            创建：
+            日期：2026-05-11
+            描述：加班申请控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.ComponentNumController">
+            <summary>
+            创建：lx
+            日期：2026-05-29
+            描述：成分编码控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.ComponentNumController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.ComponentNumController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.ComponentNumController.SubmitForm(System.Collections.Generic.List{System.String},System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.ComponentNumController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.CustomerinfoController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：客户信息控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeParameteController">
+            <summary>
+            创建：lx
+            日期：2026-07-20
+            描述：染缸中控参数
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeParameteController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            index主页获取数据
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeParameteController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeParameteController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeParameteController.DeleteForm(System.String)">
+            <summary>
+            删除
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeTechniqueController">
+            <summary>
+            创建：lx
+            日期：2026-07-31
+            描述：染色工艺档案控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeTechniqueController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeTechniqueController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeTechniqueController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.DyeTechniqueController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.EquipmentLedgerController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-13 14:21
+            描 述：物料基础管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.HouseInfoController">
+            <summary>
+            创建：lx
+            日期：2026-07-09
+            描述：宿舍档案控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.HouseInfoController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.HouseInfoController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.HouseInfoController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.HouseInfoController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.MaterialfoundationController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-13 14:21
+            描 述：物料基础管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.MatTypeController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：物料类别控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.OvercostController">
+            <summary>
+            创 建：
+            日 期：2026-05-15 
+            描 述：超成本计算控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.PayForQualityController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 13:56
+            描 述：质量扣款条例控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.BaseManage.Controllers.PayForQualityController.DeleteFormCore(System.String,System.String)">
+            <summary>删除核心逻辑：失败时抛异常，由调用方决定如何处理</summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.PieceWorkCraftController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-13 14:21
+            描 述：物料基础管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.PieceWorkProcessController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-13 14:21
+            描 述：物料基础管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.ProcessCraftController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：物料类别控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.SalaryInfoController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-07-22 08:50
+            描 述：计时工资控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.SocialSecurityController">
+            <summary>
+            创建：
+            日期：2026-06-10
+            描述：社保档案控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.BaseManage.Controllers.SupplierController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 13:56
+            描 述：供应商信息控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ProductionManage.Controllers.ProcessmaintenanceController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-16 16:34
+            描 述：生产信息控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ProductionManage.Controllers.ProcessversionController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 09:47
+            描 述：工序版本控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ColorManagement.Controllers.ColorManagerController">
+            <summary>
+            创建：lx
+            日期：2026-05-26
+            描述：颜色管理控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.ColorManagement.Controllers.ColorManagerController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.ColorManagement.Controllers.ColorManagerController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.ColorManagement.Controllers.ColorManagerController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.ColorManagement.Controllers.ColorManagerController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ContentManage.Controllers.ArticleCategoryController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-06-09 19:42
+            描 述：新闻类别控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ContentManage.Controllers.ArticleNewsController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-06-09 19:42
+            描 述：新闻管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ContentManage.Controllers.MeetController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-06-09 19:42
+            描 述：新闻类别控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyematRequestController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 13:56
+            描 述：物料领用单控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyeSubStockOutController">
+            <summary>
+            创建：lx
+            日期：2026-05-26
+            描述：染化料分仓库出库控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyeSubStockOutController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyeSubStockOutController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyeSubStockOutController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyeSubStockOutController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyetransferController">
+            <summary>
+            创建：lx
+            日期：2026-05-27
+            描述：染化料调拨控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyetransferController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyetransferController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyetransferController.GetMatstockFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyetransferController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.DyetransferController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.Query_DyesubstockoutController">
+            <summary>
+            创建：lx
+            日期：2026-05-28
+            描述：染化料分仓库用料查询控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.DyestuffManagement.Controllers.Query_DyesubstockoutController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            分页获取数据
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.EmployeeInformation.Controllers.EmployeeController.GetHouseMemberListJson(System.String,System.String)">
+            <summary>
+            获取楼栋房间住宿人员
+            </summary>
+            <param name="houseCode">楼栋号</param>
+            <param name="roomCode">房间号</param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.EmployeeInformation.Controllers.PersonchangeController">
+            <summary>
+            创建：lx
+            日期：2026-05-15
+            描述：人事异动表
+            </summary>
+            
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.EmployeeInformation.Controllers.PersonchangeController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.EmployeeInformation.Controllers.PersonchangeController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.EmployeeInformation.Controllers.PersonchangeController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.EmployeeInformation.Controllers.PersonchangeController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FileManage.Controllers.UploadfileController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-07-22 12:04
+            描 述：文件管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FinancialManagement.Controllers.DiscountnoteController">
+            <summary>
+            创 建：lx
+            日 期：2026-05-21
+            描 述：销售折让单控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FinancialManagement.Controllers.LoanNoteController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：借款单控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FinancialManagement.Controllers.PayAdminController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：行政扣款控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FinancialManagement.Controllers.PaymentReceiptController">
+            <summary>
+            创 建：lx
+            日 期：2026-05-18
+            描 述：收款单控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FinancialManagement.Controllers.PSstatementController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 13:56
+            描 述：供应商信息控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FlowManage.Controllers.FlowinstanceController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-07-14 09:18
+            描 述：我的流程控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FlowManage.Controllers.FlowinstanceController.ToDoFlow">
+            <summary>
+            待处理的流程
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FlowManage.Controllers.FlowinstanceController.DoneFlow">
+            <summary>
+            已完成的流程
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FlowManage.Controllers.FlowinstanceController.Verification">
+            <summary>
+            处理界面
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FlowManage.Controllers.FlowinstanceController.QueryHistories(System.String)">
+            <summary>
+            获取一个流程实例的操作历史记录
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.InfoManage.Controllers.MessageController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-07-29 16:41
+            描 述：通知管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.InspectionManage.Controllers.CuscomplaintController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：客户信息控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.InspectionManage.Controllers.FgbadreportController">
+            <summary>
+            创建：lx
+            日期：2026-05-25
+            描述：不合格成品报次单控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.InspectionManage.Controllers.FgInspectionController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：客户信息控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.InspectionManage.Controllers.ReworkrecordController">
+            <summary>
+            创建：lx
+            日期：2026-05-25
+            描述：厂内回修通知单控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.InspectionManage.Controllers.ReworkrecordController.GetOrganize(System.String)">
+            <summary>
+            获取部门名称
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.ActivateCardController">
+            <summary>
+            创建：lx
+            日期：2026-01-14
+            描述：开卡管理控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.CardopenmanagementController">
+            <summary>
+            创建：lx
+            日期：2026-01-14
+            描述：开卡任务管理控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.CardopenmanagementController.GetIdFormJson(System.String)">
+            <summary>
+            根据点色单ID查询数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.DyeProdPlanController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-10-08 08:50
+            描 述：染色排产控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.DyeProdPlanController.UpdateSortCode(System.String,System.String,System.String)">
+            <summary>
+            修改位置
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.FinancialReviewController">
+            <summary>
+            创建：lx
+            日期：2026-04-14
+            描述：财务审批控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FinancialReviewController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FinancialReviewController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FinancialReviewController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.FormulaWipeController">
+            <summary>
+            创建：lx
+            日期：2026-07-24
+            描述：染部配方刷卡
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FormulaWipeController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FormulaWipeController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FormulaWipeController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.FormulaWipeController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.OrderController">
+            <summary>
+            创 建：超级管理员
+            日 期：2021-07-12 20:41
+            描 述：订单管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.ProcessswipeController">
+            <summary>
+            创建：lx
+            日期：2026-04-27
+            描述：工序刷卡控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.ProcessswipeController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.ProcessswipeController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.OrderManagement.Controllers.ProcessswipeController.SubmitForm(System.String,System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.SpotColorController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 15:00
+            描 述：来样登记控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.OrderManagement.Controllers.WholetanKnoticeController">
+            <summary>
+            创 建：lx
+            日 期：2026-05-20
+            描 述：包缸通知单控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.PackageManagement.Controllers.PackagingHomeworkController">
+            <summary>
+            创建：
+            日期：2026-05-04
+            描述：包装作业管理控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.PurchasingManagement.Controllers.InspectController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 13:56
+            描 述：供应商信息控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.PurchasingManagement.Controllers.PurchaseOrderController.GetNewPriceJson(System.String)">
+            <summary>
+            获取物料最新单价
+            </summary>
+            <param name="matcode">物料编码</param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.ResearchManagement.Controllers.ResearchTaskController">
+            <summary>
+            创建
+            日期：2026-04-28
+            描述：研发任务控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController">
+            <summary>
+            创建：lx
+            日期：2026-05-12
+            描述：销售订单控制器
+            </summary>
+            
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController.GetListJson">
+            <summary>
+            获取已审核和未出库或者部分出库数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController.GetDeliverListJson(System.String,System.String)">
+            <summary>
+            获取id和未出库数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SalesManage.Controllers.SalesdeliveryController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SampleProofManage.Controllers.CusagreeovercostController">
+            <summary>
+            创建：
+            日期：2026-05-15
+            描述：客户色号超成本协议控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SampleProofManage.Controllers.DuplicateSampleTaskController">
+            <summary>
+            创建：lx
+            日期：2026-04-20
+            描述：复样任务管理控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController">
+            <summary>
+            创建：lx
+            日期：2026-04-20
+            描述：打样配方控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            index主页获取数据
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.GetColorNoFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.GetColorNo(System.String)">
+            <summary>
+            获取对应色号的成份顺序
+            </summary>
+            <param name="keyword">色号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.GetComponent">
+            <summary>
+            查询所有染色成分字典
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.GetMyRecipeHeader(System.String)">
+            <summary>
+            获取测配色数据
+            </summary>
+            <param name="keyword">色号</param>
+            <param name="ColorantSet">成分顺序</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.FormulaController.DeleteForm(System.String)">
+            <summary>
+            删除
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController">
+            <summary>
+            创建：lx
+            日期：2026-04-23
+            描述：生产配方控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            index主页获取数据
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetFormulaCodeFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetIdListJson(System.String)">
+            <summary>
+            根据id查询子表信息
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetIdNatureJson(System.String)">
+            <summary>
+            根据流程卡号以及配方性质查询生产配方
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetColorNoListJson(System.String)">
+            <summary>
+            根据色号查询对应的数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetDyeParameteJson(System.String,System.String)">
+            <summary>
+            根据名称、克重查询对应的数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetDyeTechniqueJson(System.String,System.String,System.String)">
+            <summary>
+            获取染色工艺号
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.GetIsSensitive(System.String)">
+            <summary>
+            获取是否敏感色
+            </summary>
+            <param name="keyword">色号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProductFormulaController.DeleteForm(System.String)">
+            <summary>
+            删除
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SampleProofManage.Controllers.ProofingTaskController.GetTimeJson(System.String)">
+            <summary>
+            获取实际打样时间
+            </summary>
+            <param name="keyword">来样登记id</param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SampleProofManage.Controllers.RepetitionFormulaController">
+            <summary>
+            创建：lx
+            日期：2026-04-20
+            描述：复样管理控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SampleProofManage.Controllers.SamplelogController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 15:00
+            描 述：来样登记控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.FixedManage.Controllers.NewFormuleController">
+            <summary>
+            创建：lx
+            日期：2026-07-18
+            描述：定型生产配方
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FixedManage.Controllers.NewFormuleController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FixedManage.Controllers.NewFormuleController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FixedManage.Controllers.NewFormuleController.GetSteFormuleJson(System.String,System.String)">
+            <summary>
+            根据工序和色号取定型配方数据
+            </summary>
+            <param name="process">工序</param>
+            <param name="colorno">色号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FixedManage.Controllers.NewFormuleController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.FixedManage.Controllers.NewFormuleController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StetypeManage.Controllers.SteFormuleController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-7-18 08:50
+            描 述：定型配方控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.AvailableInventoryController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 15:00
+            描 述：来样登记控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockinController">
+            <summary>
+            创建：lx
+            日期：2026-05-04
+            描述：成品入库控制器
+            </summary>
+            
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockinController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockinController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockinController.GetProcessCodeJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            用于销售订单tableSelect 流程卡号
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockinController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockinController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.FgstockoutController">
+            <summary>
+            创建：
+            日期：2026-05-12
+            描述：成品出库控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.LendNoteController">
+            <summary>
+            创建：lx
+            日期：2026-06-24
+            描述：借用单控制器
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.LendNoteController.GetGridJson(IceskyCloud.Code.SoulPage{System.Object},System.String)">
+            <summary>
+            分页获取数据
+            </summary>
+            <param name="pagination"></param>
+            <param name="keyword"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.LendNoteController.GetFormJson(System.String)">
+            <summary>
+            获取单条数据详情
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.LendNoteController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.LendNoteController.DeleteForm(System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="keyValue"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.MatCheckNoteController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-12 08:50
+            描 述：客户信息控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.StockManage.Controllers.MatCheckNoteController.GetMaterialStockListJson(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            获取物料库存信息
+            </summary>
+            <param name="supCode">供应商编码</param>
+            <param name="cusCode">客户编码</param>
+            <param name="storageLocaCode">库位Code</param>
+            <param name="warehouseLocaCode">仓位Code</param>
+            <param name="shelfNoCode">架子号</param>
+            <param name="matCode">物料编码</param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.ProcessStockinController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 15:00
+            描 述：来样登记控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.ReceiptController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 15:00
+            描 述：来样登记控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.ReceptOutController">
+            <summary>
+            创建：
+            日期：2026-06-10
+            描述：其他出库控制器
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.StockManage.Controllers.ReturnNoteController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-03-17 15:00
+            描 述：来样登记控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.CodegeneratelogController">
+            <summary>
+            创 建：超级管理员
+            日 期：2022-10-06 14:18
+            描 述：条码生成记录控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.CoderuleController">
+            <summary>
+            创 建：超级管理员
+            日 期：2022-10-06 11:25
+            描 述：条码规则控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.FlowschemeController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-07-10 08:49
+            描 述：流程设计控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.FlowschemeController.GetFormJsonByenCode(System.String,System.String)">
+            <summary>
+            通过流程ID（F_Id 或 F_SchemeCode）获取方案信息，F_SchemeContent 返回 JSON 对象
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.FlowschemeController.GetSchemeInfoJson(System.String)">
+            <summary>
+            通过流程ID（F_Id 或 F_SchemeCode）获取方案信息，F_SchemeContent 返回 JSON 对象
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.FlowschemeController.GetModuleButtonsFieldsJson(System.String)">
+            <summary>
+            根据模块编码（sys_module.F_EnCode）获取该模块的按钮列表和字段列表，
+            字段按 F_TableName 分组为 table 数组，并附带表的中文名
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.FlowschemeController.GetFlowModules(System.String,System.String)">
+            <summary>
+            返回当前用户角色下所有可用的业务模块（有字段的模块）
+            管理员返回全部，普通用户按角色过滤
+            排除已被同一组织绑定过的业务模块（F_OrganizeId=''或=传入值）
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.FormController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-07-08 14:33
+            描 述：表单设计控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.ModuleController.FilterModuleByRole(System.Collections.Generic.List{IceskyCloud.Domain.SystemManage.ModuleEntity})">
+            <summary>
+            按登录人角色过滤模块：角色未授权的模块直接移除；保留被授权模块的父级链，避免树断链
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.ModuleController.GetMainView(System.String)">
+            <summary>
+            获取模块Index主视图名
+            </summary>
+            <param name="encode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.ModuleController.GetFormHistoryList(System.Int32,System.String)">
+            <summary>
+            获取模块代码历史记录
+            </summary>
+            <param name="formIndex"></param>
+            <param name="ModuleId"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.ModuleDataController">
+            <summary>
+            创 建：超级管理员
+            日 期：2025-12-11 08:45
+            描 述：数据管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.ModuleFieldsController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-05-21 14:38
+            描 述：字段管理控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemManage.Controllers.ModuleFieldsController.SyncForm(IceskyCloud.Domain.SystemManage.ModuleFieldsEntity)">
+            <summary>
+            同步
+            </summary>
+            <param name="entity"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.ModulePlanController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-07-23
+            描 述：搜索方案控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.ModulePrintController">
+            <summary>
+            创 建：超级管理员
+            日 期：2025-12-11 08:45
+            描 述：数据管理控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.TemplateController">
+            <summary>
+            创 建：超级管理员
+            日 期：2022-10-06 14:11
+            描 述：打印模板控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemManage.Controllers.ThirdAppController">
+            <summary>
+            创 建：超级管理员
+            日 期：2022-10-06 14:11
+            描 述：打印模板控制器类
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemOrganize.Controllers.DataPrivilegeRuleController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-06-01 09:44
+            描 述：数据权限控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemOrganize.Controllers.RoleAuthorizeController.GetPermissionOptionsTree(System.String,System.String)">
+            <summary>
+            设置打印权限树（第4步）：打印模板
+            树结构: 模块 → 打印模板（模板直接挂在模块目录下）
+            F_ItemType = 4 打印权限
+            F_ObjectType = 1 打印 (F_ItemId = sys_moduleprint.F_Id)
+            树节点ID: printtemplate_模板Id
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemOrganize.Controllers.SystemSetController">
+            <summary>
+            创 建：超级管理员
+            日 期：2020-06-12 13:50
+            描 述：系统设置控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemSecurity.Controllers.AppLogController.getDirectory(System.Collections.Generic.List{IceskyCloud.Code.Model.AppLogEntity},System.String)">
+            <summary>
+            获得指定路径下所有文件名
+            </summary>
+            <param name="sw">列表</param>
+            <param name="path">文件夹路径</param>
+        </member>
+        <member name="T:IceskyCloud.Web.Areas.SystemSecurity.Controllers.OpenJobsController">
+            <summary>
+            定时任务
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemSecurity.Controllers.OpenJobsController.QueryLocalHandlers">
+            <summary>
+            获取本地可执行的任务列表
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemSecurity.Controllers.OpenJobsController.ChangeStatus(System.String,System.Int32)">
+            <summary>
+            改变任务状态，启动/停止
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemSecurity.Controllers.OpenJobsController.DoNow(System.String)">
+            <summary>
+            立即执行任务
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Areas.SystemSecurity.Controllers.OpenJobsController.ClearScheduleJob">
+            <summary>
+            清除任务计划
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseEquipController.GetLatestEquip(System.String)">
+            <summary>
+            获取最新一条刷卡信息
+            </summary>
+            <param name="F_ProcessCode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseEquipController.ExecuteTheProcess(System.String)">
+            <summary>
+            根据流程卡号，执行染色第一步骤
+            </summary>
+            <param name="F_ProcessCode">流程卡号</param>
+            <returns></returns>
+        </member>
+        <member name="P:IceskyCloud.Web.BaseEquipController.EquipList.F_NextProcess">
+            <summary>
+            下一工序
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseEquipController.GetCarHeight(System.String)">
+            <summary>
+            获取车号重量
+            </summary>
+            <param name="F_CardNo">车号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseEquipController.GetEmployeeInfo(System.String)">
+            <summary>
+            获取人员信息
+            </summary>
+            <param name="F_EmployeeNo">员工工号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseEquipController.GetScanCount(System.String)">
+            <summary>
+            获取工序刷卡扫描次数
+            </summary>
+            <param name="F_ProcessName">工序名称</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseEquipController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+            <param name="model"></param>
+            <param name="keyValue"></param>
+            <param name="enCode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.ColorController.SubmitForm(System.Object)">
+            <summary>
+            提交数据
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.ColorController.GetColor(System.String,System.String)">
+            <summary>
+            获取到主表Id
+            </summary>
+            <param name="ColorNo"></param>
+            <param name="ProcessCode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.GetProductFormula(System.String)">
+            <summary>
+            根据配方单号查询数据
+            </summary>
+            <param name="F_FormulaCode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.GetProductFormulaList(System.String)">
+            <summary>
+            根据配方单号Id查询配方单号子表数据
+            </summary>
+            <param name="F_PrimaryId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.GetRole(System.String)">
+            <summary>
+            根据id查询岗位名称
+            </summary>
+            <param name="F_Id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.GetWarehouseType">
+            <summary>
+            查询仓库
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.GetDigitalScale">
+            <summary>
+            查询电子秤编号
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.GetAllstockHand(System.String,System.String)">
+            <summary>
+            根据仓库编号、物料名称查询物料对应数量
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.DyeIssueController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+            <param name="model"></param>
+            <param name="enCode"></param>
+            <param name="F_Id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.FormulaWipeController.GetFormulaCode(System.String)">
+            <summary>
+            根据配方单号查询数据
+            </summary>
+            <param name="F_FormulaCode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.FormulaWipeController.GetEmployeeInfo(System.String)">
+            <summary>
+            获取人员信息
+            </summary>
+            <param name="F_EmployeeCode">员工工号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.FormulaWipeController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+            <param name="model"></param>
+            <param name="keyValue"></param>
+            <param name="enCode"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.MealcardController.GetSwipeRecord(System.String,System.String)">
+            <summary>
+            获取该员工刷卡记录
+            </summary>
+            <param name="F_EmployeeCode">员工工号</param>
+            <param name="F_CardNo">卡号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.Api.MealcardController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+            <param name="model"></param>
+            <param name="keyValue"></param>
+            <param name="enCode"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Controllers.OperationAuthModel">
+            <summary>
+            操作权限模型（按模块编码组织）
+            export0 本页导出 / export1 全部导出 / prints 打印模板列表
+            </summary>
+        </member>
+        <member name="F:IceskyCloud.Web.Controllers.ClientsDataController.cacheKeyOperator">
+            <summary>
+            缓存操作类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetClientsDataJson">
+            <summary>
+            初始数据加载请求方法
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.ClearCache">
+            <summary>
+            清空缓存请求方法
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetMenuFields">
+            <summary>
+            模块字段权限
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetQuickModuleList">
+            <summary>
+            快捷菜单列表
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetNoticeList">
+            <summary>
+            获取公告信息
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetInitDataJson">
+            <summary>
+            初始菜单列表请求方法
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetNoticeInfo">
+            <summary>
+            获取公告信息请求方法
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetUserCode">
+            <summary>
+            获取当前用户信息请求方法
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetQuickModule">
+            <summary>
+            获取快捷菜单请求方法
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetCoutData">
+            <summary>
+            获取数据信息接口
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetMenuListNew">
+            <summary>
+            菜单按钮信息
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.ToMenuJsonNew(System.Collections.Generic.List{IceskyCloud.Domain.SystemManage.ModuleEntity},System.String)">
+            <summary>
+            菜单信息
+            </summary>
+            <param name="data"></param>
+            <param name="parentId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetDataItemList">
+            <summary>
+            字段信息
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetMenuButtonListNew">
+            <summary>
+            菜单按钮信息
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.ClientsDataController.GetMenuFieldsListNew">
+            <summary>
+            菜单字段信息
+            </summary>
+            <returns></returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:IceskyCloud.Web.Controllers.ClientsDataController.GetOperationAuthorizeList" -->
+        <member name="M:IceskyCloud.Web.Controllers.LoginController.GetAuthCode">
+            <summary>
+            验证码获取（此接口已弃用）
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.LoginController.CheckLoginState">
+            <summary>
+            验证登录状态请求接口
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.LoginController.CheckLogin(System.String,System.String,System.String)">
+            <summary>
+            登录验证
+            </summary>
+            <param name="username">用户</param>
+            <param name="password">密码</param>
+            <param name="localurl">域名</param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.Controllers.PublicController">
+            <summary>
+            创 建：超级管理员
+            日 期：2026-04-22 08:50
+            描 述：公共方法控制器类
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetTreeList(System.String)">
+            <summary>
+            获取首页树形结构数据
+            </summary>
+            <param name="moduleEnCode">模块EnCode</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetFormJson(System.String,System.String,System.String)">
+            <summary>
+            获取参照模块选中数据，用于回显
+            </summary>
+            <param name="ObjectName"></param>
+            <param name="fieldName"></param>
+            <param name="fieldValue"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetTableJson(System.Int32,IceskyCloud.Code.SoulPage{System.Object},System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            
+            </summary>
+            <param name="type">1:方案搜索 2:Index首页加载 3:快捷搜索</param>
+            <param name="pagination">分页</param>
+            <param name="moduleEnCode">模块EnCode</param>
+            <param name="keyword">关键字</param>
+            <param name="buttonEncode">搜索方案Code</param>
+            <param name="filedName">快捷搜索字段（空则默认全部）</param>
+            <param name="param">参数</param>
+            <param name="enCode">数据源</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetControllerArea(System.String)">
+            <summary>
+            根据控制器名称（含或不含 "Controller" 后缀）反射获取其 [Area] 特性值
+            </summary>
+            <param name="controllerName">控制器名，如 "Samplelog" 或 "SamplelogController"</param>
+            <returns>Area 名称，如 "SampleProofManage"；找不到则返回 null</returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetFormsJson(System.String,System.String,System.String)">
+            <summary>
+            加载Form页面方法
+            </summary>
+            <param name="ModuleEnCode">模块EnCode</param>
+            <param name="keyValue">主键Id</param>
+            <param name="dataname">子表dataname数组 例：["wch_processstockin_list","wch_processstockin_list_list"]</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetPrintJson(System.String,System.String)">
+            <summary>
+            加载Print页面方法
+            </summary>
+            <param name="ModuleEnCode">模块EnCode</param>
+            <param name="keyValue">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetList(System.String,System.String)">
+            <summary>
+            获取多条模块数据（返回object类型）
+            </summary>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetListDynamic(System.String,System.String)">
+            <summary>
+            获取多条模块数据（动态编译）
+            </summary>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetForm(System.String,System.String)">
+            <summary>
+            获取单条模块数据
+            </summary>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetFormDynamic(System.String,System.String)">
+            <summary>
+            获取单条模块数据（动态编译）
+            </summary>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetLookList(System.String,System.String)">
+            <summary>
+            获取多条模块数据（返回dynamic类型）
+            </summary>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetLookList(IceskyCloud.Code.SoulPage{System.Object},System.String,System.String)">
+            <summary>
+            获取多条模块数据（分页）（返回dynamic类型）
+            </summary>
+            <param name="pagination">分页参数</param>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetLookListDynamic(IceskyCloud.Code.SoulPage{System.Object},System.String,System.String)">
+            <summary>
+            获取多条模块数据（分页）（动态编译）
+            </summary>
+            <param name="pagination">分页参数</param>
+            <param name="enCode">数据编码</param>
+            <param name="param">参数 例：{arguments:["xx","yy"],keyword:""}</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetExecProcedureList(System.String,System.String)">
+            <summary>
+            获取存储过程
+            </summary>
+            <param name="procName">过程名</param>
+            <param name="param">参数 例：["xx","yy","zz"]</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetStoredProcedureList(System.String,System.String)">
+            <summary>
+            获取存储过程数据
+            </summary>
+            <param name="procName">过程名</param>
+            <param name="param">参数 例：[{"key":"11","value":"11"},{"key":"22","value":"22"}]</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetStoredProcedureList(IceskyCloud.Code.SoulPage{System.Object},System.String,System.String)">
+            <summary>
+            获取存储过程数据（分页）
+            </summary>
+            <param name="pagination">分页参数</param>
+            <param name="procName">过程名</param>
+            <param name="param">参数 例：[{"key":"11","value":"11"},{"key":"22","value":"22"}]</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.SubmitForm(System.String,System.String,System.String,System.Int32)">
+            <summary>
+            Form提交
+            </summary>
+            <param name="model"></param>
+            <param name="keyValue">主键Id</param>
+            <param name="enCode">按钮Id 例（NF-edit）</param>
+            <param name="flow_model">流程model</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.UpdateIndex(System.String,System.String,System.String,System.String)">
+            <summary>
+            首页字段编辑更新
+            </summary>
+            <param name="url">IndexUrl</param>
+            <param name="fieldName">字段名</param>
+            <param name="fieldValue">字段值</param>
+            <param name="keyValue">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.DeleteForm(System.String,System.String)">
+            <summary>
+            删除数据
+            </summary>
+            <param name="deleteparams">删除参数 例：[{"table":"base_supplier","primary":"F_Id"},{"table":"base_supplier_list","primary":"F_PrimaryId"}]</param>
+            <param name="keyValue">删除主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.GetToDoList">
+            <summary>
+            获取待办事项
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.Controllers.PublicController.RequestUrl(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            通用 URL 请求接口：服务端转发 HTTP 请求并返回响应结果
+            </summary>
+            <param name="url">目标地址，必须以 http:// 或 https:// 开头</param>
+            <param name="method">请求方式 GET/POST/PUT/DELETE，默认 GET</param>
+            <param name="headers">请求头，JSON 字符串，如 {"Authorization":"Bearer xxx"}</param>
+            <param name="body">请求体（POST/PUT 时有效）</param>
+            <param name="contentType">请求体类型，默认 application/json</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.LogController.Add(IceskyCloud.Domain.Api.AppLogRequest)">
+            <summary>
+            新增App日志
+            </summary>
+            <param name="requestParams"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.LogController.GetUpdateInfo">
+            <summary>
+            获取应用最新安装包
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.PrintTags(IceskyCloud.Web.PackTaskController.TemplateRequest)">
+            <summary>
+            打印标签
+            </summary>
+            <param name="request">
+              templateUrl: 模板url地址（如 printmodel.html）
+              data: 替换数据，key 为字段名，value 为替换值
+            </param>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.ExtractNumber(System.String)">
+            <summary>
+            排序
+            </summary>
+            <param name="packNo"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.PrintBarcode(IceskyCloud.Web.PackTaskController.BarcodeRequest)">
+            <summary>
+            打印码单
+            </summary>
+            <param name="request">
+              templateUrl: 模板url地址（如 printmodel.html）
+              data: 替换数据，key 为字段名，value 为替换值
+            </param>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.ReplaceFields(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.Boolean)">
+            <summary>
+            按"特殊 table"区分替换。特殊 table = 带 is-code-sheet="true" 或 is-list-table="true" 属性的 &lt;table&gt;：
+              isform=false → 只替换特殊 table 内部的内容（html 不含 table 时整段替换）
+              isform=true  → 替换特殊 table 之外的所有内容：&lt;table&gt; 外部 + 普通 table 内部
+            </summary>
+        </member>
+        <member name="T:IceskyCloud.Web.PackTaskController.BarcodeRequest">
+            <summary>
+            请求模型
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.PackTaskController.BarcodeRequest.TemplateId">
+            <summary>模板Id</summary>
+        </member>
+        <member name="P:IceskyCloud.Web.PackTaskController.BarcodeRequest.ModuleEnCode">
+            <summary>模块EnCode</summary>
+        </member>
+        <member name="P:IceskyCloud.Web.PackTaskController.BarcodeRequest.KeyValue">
+            <summary>主键Id</summary>
+        </member>
+        <member name="T:IceskyCloud.Web.PackTaskController.TemplateRequest">
+            <summary>
+            请求模型
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.PackTaskController.TemplateRequest.TemplateId">
+            <summary>模板Id</summary>
+        </member>
+        <member name="P:IceskyCloud.Web.PackTaskController.TemplateRequest.Data">
+            <summary>替换数据</summary>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.SubmitForm(System.String,System.String,System.String)">
+            <summary>
+            提交数据
+            </summary>
+            <param name="model"></param>
+            <param name="enCode"></param>
+            <param name="F_Id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetEmployeeInfo(System.String)">
+            <summary>
+            获取员工信息
+            </summary>
+            <param name="F_EmployeeCode">工号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetStockinInfo(System.String)">
+            <summary>
+            获取客户品名、成份布名、批次号
+            </summary>
+            <param name="F_BaseEquipId">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetRollUpMachine(System.String)">
+            <summary>
+            获取打卷机
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetSpotColor(System.String)">
+            <summary>
+            获取点色单信息
+            </summary>
+            <param name="F_Id">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetFullName(System.String)">
+            <summary>
+            获取部门信息
+            </summary>
+            <param name="F_Id">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetForeMan(System.String)">
+            <summary>
+            获取领班人员
+            </summary>
+            <param name="F_EmployeeNo">员工工号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetItemCode(System.String)">
+            <summary>
+            获取数据字典Code
+            </summary>
+            <param name="F_EnCode">分类编号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetSpotColorList(System.String,System.String)">
+            <summary>
+            获取点色单细表
+            </summary>
+            <param name="F_PrimaryId">主键Id</param>
+            <param name="F_ColorNo">色号</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetEquipList(System.String)">
+            <summary>
+            获取设备列表信息
+            </summary>
+            <param name="F_ProcessCode">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetList(System.String)">
+            <summary>
+            获取设备列表信息
+            </summary>
+            <param name="F_ProcessCode">主键Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetPackPrintList">
+            <summary>
+            获取包装作业打印模板
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.PackTaskController.GetOrganize(System.String)">
+            <summary>
+            获取部门名称
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.TestController">
+            <summary>
+            测试文件
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.TokenController.Index(System.String,System.String)">
+            <summary>
+            获取授权Token
+            </summary>
+            <param name="appId"></param>
+            <param name="appSecret"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.UserController">
+            <summary>
+            用户接口
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.UserController.Login(IceskyCloud.Web.UserController.LoginRequest)">
+            <summary>
+            用户登录
+            </summary>
+            <param name="request">请求对象</param>
+            <returns></returns>
+        </member>
+        <member name="M:IceskyCloud.Web.UserController.LoginOff">
+            <summary>
+            用户退出登录
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.UserController.LoginRequest">
+            <summary>
+            登录请求对象
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.UserController.LoginRequest.userName">
+            <summary>
+            用户名
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.UserController.LoginRequest.password">
+            <summary>
+            密码
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.UserController.LoginRequest.localurl">
+            <summary>
+            域名
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.BaseController.OnActionExecutionAsync(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext,Microsoft.AspNetCore.Mvc.Filters.ActionExecutionDelegate)">
+            <summary>
+            演示模式过滤
+            </summary>
+            <param name="context"></param>
+            <param name="next"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.AuthorizeFilterAttribute">
+            <summary>
+            权限验证
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.AuthorizeFilterAttribute.#ctor(System.String,System.Boolean)">
+            <summary>
+            权限特性
+            </summary>
+            <param name="authorize">权限参数</param>
+            <param name="needAuth">是否鉴权</param>
+        </member>
+        <member name="M:IceskyCloud.Web.AuthorizeFilterAttribute.OnActionExecutionAsync(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext,Microsoft.AspNetCore.Mvc.Filters.ActionExecutionDelegate)">
+            <summary>
+            验证
+            </summary>
+            <param name="context"></param>
+            <param name="next"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.LoginFilterAttribute">
+            <summary>
+            验证token
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.LoginFilterAttribute.#ctor(System.Boolean)">
+            <summary>
+            登录特性
+            </summary>
+            <param name="needLogin">是否验证</param>
+        </member>
+        <member name="M:IceskyCloud.Web.LoginFilterAttribute.OnActionExecutionAsync(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext,Microsoft.AspNetCore.Mvc.Filters.ActionExecutionDelegate)">
+            <summary>
+            验证
+            </summary>
+            <param name="context"></param>
+            <param name="next"></param>
+            <returns></returns>
+        </member>
+        <member name="T:IceskyCloud.Web.HandlerAuthorizeAttribute">
+            <summary>
+            权限验证
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.HandlerAuthorizeAttribute.#ctor(System.String,System.Boolean)">
+            <summary>
+            权限特性
+            </summary>
+            <param name="authorize">权限参数</param>
+            <param name="needAuth">是否鉴权</param>
+        </member>
+        <member name="T:IceskyCloud.Web.HandlerLoginAttribute">
+            <summary>
+            登录验证
+            </summary>
+        </member>
+        <member name="M:IceskyCloud.Web.HandlerLoginAttribute.#ctor(System.Boolean)">
+            <summary>
+            登录特性
+            </summary>
+            <param name="needLogin">是否验证</param>
+        </member>
+        <member name="T:IceskyCloud.Web.Properties.Resources">
+            <summary>
+              一个强类型的资源类，用于查找本地化的字符串等。
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.Properties.Resources.ResourceManager">
+            <summary>
+              返回此类使用的缓存的 ResourceManager 实例。
+            </summary>
+        </member>
+        <member name="P:IceskyCloud.Web.Properties.Resources.Culture">
+            <summary>
+              重写当前线程的 CurrentUICulture 属性，对
+              使用此强类型资源类的所有资源查找执行重写。
+            </summary>
+        </member>
+    </members>
+</doc>

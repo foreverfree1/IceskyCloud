@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IceskyCloud.Web", "IceskyCloud.Web.csproj", "{E75C3128-0DFA-D7CB-18F4-8E9B61951304}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E75C3128-0DFA-D7CB-18F4-8E9B61951304}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E75C3128-0DFA-D7CB-18F4-8E9B61951304}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E75C3128-0DFA-D7CB-18F4-8E9B61951304}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E75C3128-0DFA-D7CB-18F4-8E9B61951304}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D8D901E7-FA95-4448-9561-9E7E43CEF243}
+	EndGlobalSection
+EndGlobal

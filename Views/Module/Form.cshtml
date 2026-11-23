@@ -1,0 +1,22 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+@if (ViewData["FormCode"] != null)
+{
+    @Html.Raw(ViewData["FormCode"].ToString())
+    
+}
+else
+{
+    <div style="padding: 20px; color: #999; text-align: center;">未找到对应的模块表单配置</div>
+}
+<script>
+    // URL 带 pageType 时隐藏所有表格工具条（.layui-table-tool）
+    // 表单代码里的表格由 layui 异步渲染，直接用样式注入可覆盖后续动态生成的节点
+    (function () {
+        if ($.trim($.request("pageType") || "") === "") return;
+        if ($('#hideTableToolByPageType').length) return;
+        $('<style id="hideTableToolByPageType">.layui-table-tool{display:none !important;}</style>').appendTo(document.head);
+    })();
+</script>

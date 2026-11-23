@@ -1,0 +1,691 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>通知中心</title>
+    <link href="../lib/font-awesome-4.7.0/css/font-awesome.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" rel="stylesheet" />
+    <script src="../lib/jquery-3.4.1/jquery-3.4.1.min.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()" charset="utf-8"></script>
+    <link rel="stylesheet" href="../js/lay-module/dtree/dtree.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()">
+    <link rel="stylesheet" href="../js/lay-module/dtree/font/dtreefont.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()">
+    <script src="../js/framework-ui.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()"></script>
+    <script src="../lib/layui-v2.13.9/layui.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()"></script>
+    <link rel="stylesheet" href="../lib/layui-v2.13.9/css/layui.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <link rel="stylesheet" href="../css/public.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <script src="../js/lay-config.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()" charset="utf-8"></script>
+    <link href="../css/iceskycloud.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" rel="stylesheet" />
+    <link rel="stylesheet" href="../js/lay-module/loading/wcLoading.css?v=@IceskyCloud.Code.GlobalContext.GetVersion()" media="all">
+    <script src="../js/lay-module/loading/wcLoading.js?v=@IceskyCloud.Code.GlobalContext.GetVersion()" charset="utf-8"></script>
+    <style>
+        /** 消息列表样式 */
+        .layui-badge {
+            position: relative;
+            display: inline-block;
+            padding: 0 6px;
+            font-size: 12px;
+            text-align: center;
+            background-color: #FF5722;
+            color: #fff;
+            border-radius: 2px;
+            left: 40px;
+        }
+
+        .layui-badge-yellow {
+            margin-top: 5px;
+            color: #faad14;
+            background: #fff;
+            border: 1px solid #ffe58f;
+        }
+
+        .layui-badge-green {
+            margin-top: 5px;
+            color: #52c41a;
+            background: #fff;
+            border: 1px solid #b7eb8f;
+        }
+
+        .layui-badge-red {
+            margin-top: 5px;
+            color: #f5222d;
+            background: #fff;
+            border: 1px solid #ffa39e;
+        }
+
+        /* 修改内容：业务/流程 与 待处理 并排显示 */
+        .layui-badge-blue {
+            margin-top: 5px;
+            color: #1890ff;
+            background: #fff;
+            border: 1px solid #91d5ff;
+        }
+
+        .message-item-badges {
+            /* 修改内容：左侧业务/待处理，右侧已读/未读 */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 16px 5px 40px;
+            line-height: 1;
+        }
+
+        .message-item-badges-left {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .message-item-badges .layui-badge {
+            position: static;
+            left: auto;
+            right: auto;
+            margin: 0 6px 0 0;
+            top: auto;
+        }
+
+        .message-item-badges .message-badge-read-status {
+            margin-right: 0;
+            margin-left: 6px;
+            flex-shrink: 0;
+        }
+
+        /* 修改内容：未读偏红提示，已读灰色弱化 */
+        .layui-badge-gray {
+            margin-top: 5px;
+            color: #8c8c8c;
+            background: #fff;
+            border: 1px solid #d9d9d9;
+        }
+
+        /* 修改内容：已读待办略微弱化 */
+        .message-list-item.message-item-read .watercolor {
+            opacity: 0.65;
+        }
+
+        .message-list {
+            position: absolute;
+            top: 48px;
+            padding: 0px 0px;
+            left: 0;
+            right: 0;
+            bottom: 45px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            background: #F2F2F2;
+        }
+
+        .watercolor {
+            background-color: #fff;
+        }
+
+        .message-list-item {
+            display: block;
+            line-height: 18px;
+            position: relative;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+            .message-list-item:hover, .message-btn-clear:hover, .message-btn-more:hover {
+                background: #F2F2F2;
+            }
+
+            .message-list-item .message-item-icon {
+                width: 30px;
+                height: 30px;
+                line-height: 30px;
+                margin-top: -15px;
+                border-radius: 50%;
+                position: absolute;
+                left: 40px;
+                top: 50%;
+            }
+
+                .message-list-item .message-item-icon.layui-icon {
+                    color: #fff;
+                    font-size: 15px;
+                    text-align: center;
+                    background-color: #FE5D58;
+                    margin-top: -5px;
+                }
+
+                .message-list-item .message-item-icon + .message-item-right {
+                    margin-left: 40px;
+                }
+
+            .message-list-item .message-item-title {
+                color: #666;
+                font-size: 12px;
+                padding: 0 40px;
+                /* 修改内容：最多显示 2 行，超出省略号 */
+                display: -webkit-box;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
+                overflow: hidden;
+                word-break: break-all;
+                line-height: 1.4;
+            }
+
+            .message-list-item .message-item-text {
+                color: #999;
+                font-size: 12px;
+                padding-left: 40px;
+            }
+
+            .message-list-item .message-item-extra {
+                color: #999;
+                font-size: 12px;
+                padding-left: 40px;
+            }
+
+            .message-list-item > .layui-badge {
+                position: absolute;
+                right: 20px;
+                top: 12px;
+                left: 40px;
+            }
+
+        .message-btn-clear, .message-btn-more {
+            color: #666;
+            display: block;
+            padding: 10px 5px;
+            line-height: 24px;
+            text-align: center;
+            cursor: pointer;
+            background-color: #fff;
+        }
+
+        .message-btn-clear {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-top: 1px solid #e8e8e8;
+        }
+
+        .message-btn-more {
+            color: #666;
+            font-size: 13px;
+        }
+
+            .message-btn-more.ew-btn-loading > .ew-btn-loading-text {
+                font-size: 13px !important;
+            }
+
+        .message-list-empty {
+            color: #999;
+            padding: 100px 0;
+            text-align: center;
+            display: none;
+        }
+
+            .message-list-empty > .layui-icon {
+                color: #ccc;
+                display: block;
+                font-size: 45px;
+                margin-bottom: 15px;
+            }
+
+        .show-empty .message-list-empty {
+            display: block;
+        }
+
+        .show-empty .message-btn-clear, .show-empty .message-list {
+            display: none;
+        }
+        body {
+            margin: 5px 0px 5px 0px;
+        }
+        /** //消息列表样式结束 */
+    </style>
+    <script>
+        layui.use(['element', 'jquery', 'common'], function () {
+            var $ = layui.$;
+            var common = layui.common;
+
+            // 修改内容：按接口 messagelist=业务、processlist=流程 渲染待办标签
+            function escapeHtml(str) {
+                return String(str == null ? '' : str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function buildTodoItemHtml(item, kindLabel) {
+                var kindClass = 'layui-badge-blue';
+                var idAttr = item.F_Id ? String(item.F_Id) : '';
+                var title = item.F_MessageInfo || item.text || '未处理事项';
+                var timeText = item.F_CreatorTime
+                    ? new Date(item.F_CreatorTime).Format("yyyy-MM-dd hh:mm")
+                    : '';
+                // 修改内容：已读项加标记；仅流程展示右上角已读/未读（业务不标注）
+                var readed = isTodoRead(item);
+                var readClass = readed ? ' message-item-read' : '';
+                var readStatusHtml = '';
+                if (kindLabel !== '业务') {
+                    readStatusHtml = buildReadStatusHtml(item);
+                }
+                // 修改内容：FlowItem.F_ActivityType 为 2 表示已处理
+                var handled = isTodoHandled(item);
+                var handleClass = handled ? 'layui-badge-green' : 'layui-badge-yellow';
+                var handleText = handled ? '已处理' : '待处理';
+                // 修改内容：item 直接挂在 data-item，点击时取回即可
+                return '<a class="message-list-item' + readClass + '" id="' + idAttr + '" href="javascript:;"'
+                    + ' data-kind="' + kindLabel + '"'
+                    + ' data-item="' + encodeURIComponent(JSON.stringify(item)) + '"'
+                    + ' data-read="' + (readed ? '1' : '0') + '">'
+                    + '<div class="watercolor">'
+                    + '<div class="message-item-badges">'
+                    + '<div class="message-item-badges-left">'
+                    + '<span class="layui-badge ' + kindClass + '">' + kindLabel + '</span>'
+                    + '<span class="layui-badge ' + handleClass + '">' + handleText + '</span>'
+                    + '</div>'
+                    + readStatusHtml
+                    + '</div>'
+                    + '<div class="message-item-right">'
+                    + '<h2 class="message-item-title">' + escapeHtml(title) + '</h2>'
+                    + '<div class="message-item-extra">' + timeText + '</div>'
+                    + '</div>'
+                    + '</div>'
+                    + '</a>';
+            }
+
+            // 修改内容：F_ClickRead 为 true 视为已读
+            function isTodoRead(item) {
+                if (!item) return false;
+                var v = item.F_ClickRead;
+                return v === true || v === 1 || v === '1' || v === 'true';
+            }
+
+            // 修改内容：右上角已读/未读徽章
+            function buildReadStatusHtml(item) {
+                var readed = isTodoRead(item);
+                var readStatusClass = readed ? 'layui-badge-gray' : 'layui-badge-red';
+                var readStatusText = readed ? '已读' : '未读';
+                return '<span class="layui-badge ' + readStatusClass + ' message-badge-read-status">' + readStatusText + '</span>';
+            }
+
+            // 修改内容：未读在前、已读在后
+            function sortUnreadFirst(list) {
+                list.sort(function (a, b) {
+                    return (isTodoRead(a) ? 1 : 0) - (isTodoRead(b) ? 1 : 0);
+                });
+            }
+
+            // 修改内容：FlowItem.F_ActivityType 为 2 视为已处理
+            function isTodoHandled(item) {
+                if (!item || !item.FlowItem) return false;
+                var v = item.FlowItem.F_ActivityType;
+                return v == 3 || v == 4;
+            }
+
+            // 修改内容：非 Form 点菜单；Form 先开 Index 再弹 Form
+            function openPendingFlowForm(item) {
+                if (!item) {
+                    return;
+                }
+                var formUrl = item.F_Href || '';
+                if (!formUrl) {
+                    common.modalMsg('未找到表单地址', 'warning');
+                    return;
+                }
+
+                var hrefPath = String(formUrl).split('?')[0];
+                var isForm = /\/Form$/i.test(hrefPath);
+
+                // 修改内容：非 Form（如 Index/ToDoFlow）直接点左侧菜单
+                if (!isForm) {
+                    top.$("[layuimini-href='" + hrefPath + "']", ".layuimini-menu-left").click();
+                    common.modalClose();
+                    return;
+                }
+
+                // 修改内容：Form → 点 Index → 在当前内容区 iframe 里 modalOpen
+                var indexPath = hrefPath.replace(/\/Form$/i, '/Index');
+                top.$("[layuimini-href='" + indexPath + "']", ".layuimini-menu-left").click();
+                common.modalClose();
+
+                setTimeout(function () {
+                    var iframe = top.$('.layui-tab-content .layui-tab-item.layui-show iframe')[0];
+                    if (!iframe) return;
+                    var run = function () {
+                        var win = iframe.contentWindow;
+                        if (!win || !win.layui) return;
+                        win.layui.use(['common'], function (c) {
+                            try { win.layer.closeAll('iframe'); } catch (e) { }
+                            (c || win.layui.common).modalOpen({
+                                url: formUrl,
+                                routeState: item?.FlowItem || null,
+                                type: '2'
+                            });
+                        });
+                    };
+                    // 已打开过 Index：layui 已在；首次打开：等 iframe load
+                    if (iframe.contentWindow && iframe.contentWindow.layui) run();
+                    else iframe.onload = run;
+                }, 0);
+            }
+
+            // 修改内容：拉取并渲染消息列表；一键已读后可无感重载
+            function loadMessageList() {
+                common.ajax({
+                    url: "/Public/GetToDoList",
+                    dataType: "json",
+                    // async 默认 true，重载时不阻塞界面
+                    success: function (data) {
+                        processlist = data;
+                        messagelist = [];
+                        //通知值
+                        var num1 = 0;
+                        //私信值
+                        var num2 = 0;
+                        //带办值
+                        var num3 = 0;
+                        var html1 = '';
+                        var html2 = '';
+                        var html3 = '';
+                        // 修改内容：先收集待办，再按未读→已读、业务→流程排序
+                        var todoItems = [];
+
+                        // messagelist：业务待办
+                        for (var j = 0; j < messagelist.length; j++) {
+                            todoItems.push({ item: messagelist[j], kind: '业务' });
+                        }
+
+                        // processlist：消息中心（通知/私信/流程待办/业务）
+                        var noticeItems = [];
+                        for (var i = 0; i < processlist.length; i++) {
+                            var p = processlist[i];
+                            if (p.F_MessageType == 0) {
+                                noticeItems.push(p);
+                            }
+                            else if (p.F_MessageType == 1) {
+                                num2++;
+                                html2 += '<a class="message-list-item" id="' + p.F_Id + '" href="javascript:;">'
+                                    + '<div class="watercolor">'
+                                    + '<div class="message-item-right">'
+                                    + '<div class="message-item-title">' + '私信--' + p.F_CreatorUserName + '</div>'
+                                    + '<div class="message-item-text layui-hide">' + p.F_MessageInfo + '</div>'
+                                    + '<div class="message-item-extra">' + new Date(p.F_CreatorTime).Format("yyyy-MM-dd hh:mm") + '</div>'
+                                    + '</div>'
+                                    + '</div>'
+                                    + '</a>';
+                            }
+                            else if (p.F_MessageType == 3) {
+                                todoItems.push({ item: p, kind: '业务' });
+                            }
+                            else {
+                                todoItems.push({ item: p, kind: '流程' });
+                            }
+                        }
+
+                        // 修改内容：通知也按未读→已读排序，并展示已读/未读
+                        sortUnreadFirst(noticeItems);
+                        for (var n = 0; n < noticeItems.length; n++) {
+                            var np = noticeItems[n];
+                            var noticeReaded = isTodoRead(np);
+                            num1++;
+                            html1 += '<a class="message-list-item' + (noticeReaded ? ' message-item-read' : '') + '" id="' + np.F_Id + '" href="javascript:;"'
+                                + ' data-read="' + (noticeReaded ? '1' : '0') + '">'
+                                + '<div class="watercolor">'
+                                + '<div class="message-item-badges">'
+                                + '<div class="message-item-badges-left">'
+                                + '<span class="layui-badge layui-badge-yellow">通知</span>'
+                                + '</div>'
+                                + buildReadStatusHtml(np)
+                                + '</div>'
+                                + '<i class="layui-icon layui-icon-tips message-item-icon"></i>'
+                                + '<div class="message-item-right">'
+                                + '<div class="message-item-title">' + '通知--' + new Date(np.F_CreatorTime).Format("yyyy-MM-dd hh:mm") + '</div>'
+                                + '<div class="message-item-text layui-hide">' + np.F_MessageInfo + '</div>'
+                                + '<div class="message-item-extra">' + np.F_CreatorUserName + '</div>'
+                                + '</div>'
+                                + '</div >'
+                                + '</a >';
+                        }
+
+                        // 修改内容：业务(待处理→已处理) → 流程未读(待处理→已处理) → 流程已读(待处理→已处理)
+                        todoItems.sort(function (a, b) {
+                            var ar = isTodoRead(a.item) ? 1 : 0;
+                            var br = isTodoRead(b.item) ? 1 : 0;
+                            if (ar !== br) {
+                                return ar - br;
+                            }
+                            if (a.kind === b.kind) {
+                                return 0;
+                            }
+                            return a.kind === '业务' ? -1 : 1;
+                        });
+
+                        for (var t = 0; t < todoItems.length; t++) {
+                            num3++;
+                            html3 += buildTodoItemHtml(todoItems[t].item, todoItems[t].kind);
+                        }
+
+                        $('#message1').html("通知(" + num1 + ")");
+                        $('#message2').html("私信(" + num2 + ")");
+                        $('#message3').html("待办(" + num3 + ")");
+                        $('#list1').html(html1);
+                        $('#list2').html(html2);
+                        $('#list3').html(html3);
+                        // 修改内容：先清空态，再按实际数量决定是否展示空提示
+                        $('#list1, #list2, #list3').parents('.layui-tab-item').removeClass('show-empty');
+                        if (num1 == 0) {
+                            $('#list1').parents('.layui-tab-item').addClass('show-empty');
+                        }
+                        if (num2 == 0) {
+                            $('#list2').parents('.layui-tab-item').addClass('show-empty');
+                        }
+                        if (num3 == 0) {
+                            $('#list3').parents('.layui-tab-item').addClass('show-empty');
+                        }
+                    }
+                });
+            }
+
+            $(function () {
+                //todo ajax获取3个信息的参数 进行显示
+                loadMessageList();
+            });
+            // // 修改内容：根据消息内容 / 跳转地址判断待办是「流程」还是「业务」
+            // function getTodoKindLabel(item) { ... }
+            // $(function () {
+            //     common.ajax({ url: "/Public/GetToDoList", ... for (var i = 0; i < data.length; i++) { ... } });
+            // });
+            wcLoading.close();
+            /* 按钮点击事件 */
+            $('body').on('click', '.message-list-item', function () {
+                //todo 前后交互，htm2是根据后端数据生成的
+                var message = $('.layui-this')[0].id;
+                var msgId = this.id;
+                // 修改内容：已读更新 ReadMsgStatus（keyValue=F_Id）；成功后右上角改已读
+                if (msgId) {
+                    var $item = $(this);
+                    common.ajax({
+                        url: "/InfoManage/Message/ReadMsgStatus",
+                        data: { keyValue: msgId },
+                        dataType: "json",
+                        type: 'POST',
+                        success: function () {
+                            $item.attr('data-read', '1').addClass('message-item-read');
+                            $item.find('.message-badge-read-status')
+                                .removeClass('layui-badge-red')
+                                .addClass('layui-badge-gray')
+                                .text('已读');
+                        }
+                    });
+                }
+                // common.ajax({
+                //     url: "/InfoManage/Message/ReadMsgForm",
+                //     data: { keyValue: this.id },
+                //     dataType: "json",
+                //     type: 'POST',
+                //     success: function () {
+                //     }
+                // });
+                if (message == 'message1') {
+                    var title = $(this).children('.watercolor').children('.message-item-right').children('.message-item-title').text(),
+                        noticeTime = $(this).children('.watercolor').children('.message-item-right').children('.message-item-extra').text(),
+                        content = $(this).children('.watercolor').children('.message-item-right').children('.message-item-text').text();
+                    var html = '<div style="padding:15px 20px; text-align:justify; line-height: 22px;border-bottom:1px solid #e2e2e2;background-color: #2f4056;color: #ffffff">\n' +
+                        '<div style="text-align: center;margin-bottom: 20px;font-weight: bold;border-bottom:1px solid #718fb5;padding-bottom: 5px"><h4 class="text-danger">' + title + '</h4></div>\n' +
+                        '<div style="font-size: 12px">' + content + '</div>\n' +
+                        '</div>\n';
+                    top.layer.open({
+                        type: 1,
+                        title: '通知' + '<span style="float: right;right: 1px;font-size: 12px;color: #b1b3b9;margin-top: 1px">' + noticeTime + '</span>',
+                        area: '250px;',
+                        shade: 0.8,
+                        id: 'layuimini-notice',
+                        btn: ['确定'],
+                        btnAlign: 'c',
+                        moveType: 1,
+                        content: html
+                    });
+                }
+                else if (message == 'message2') {
+                    var title = $(this).children('.watercolor').children('.message-item-right').children('.message-item-title').text(),
+                        noticeTime = $(this).children('.watercolor').children('.message-item-right').children('.message-item-extra').text(),
+                        content = $(this).children('.watercolor').children('.message-item-right').children('.message-item-text').text();
+                    var html = '<div style="padding:15px 20px; text-align:justify; line-height: 22px;border-bottom:1px solid #e2e2e2;background-color: #2f4056;color: #ffffff">\n' +
+                        '<div style="text-align: center;margin-bottom: 20px;font-weight: bold;border-bottom:1px solid #718fb5;padding-bottom: 5px"><h4 class="text-danger">' + title + '</h4></div>\n' +
+                        '<div style="font-size: 12px">' + content + '</div>\n' +
+                        '</div>\n';
+                    top.layer.open({
+                        type: 1,
+                        title: '私信' + '<span style="float: right;right: 1px;font-size: 12px;color: #b1b3b9;margin-top: 1px">' + noticeTime + '</span>',
+                        area: '250px;',
+                        shade: 0.8,
+                        id: 'layuimini-notice',
+                        btn: ['确定'],
+                        btnAlign: 'c',
+                        moveType: 1,
+                        content: html
+                    });
+                }
+                else {
+                    // 修改内容：从 data-item 还原 item 传给 openPendingFlowForm
+                    try {
+                        openPendingFlowForm(JSON.parse(decodeURIComponent($(this).attr('data-item') || '{}')));
+                    } catch (e) {
+                        common.modalMsg('未找到待办数据', 'warning');
+                    }
+                }
+
+            });
+            /* 清空消息点击事件 分开写交互*/
+            // 修改内容：一键已读成功后提示并重载列表
+            $('#messageClearBtn1').click(function () {
+                common.ajax({
+                    url: "/InfoManage/Message/ReadAllMsgStatus?type=0",
+                    type: "POST",
+                    success: function () {
+                        // 修改内容：全部标记已读成功提示
+                        common.modalMsg('操作成功', 'success');
+                        loadMessageList();
+                    }
+                });
+            });
+            $('#messageClearBtn2').click(function () {
+                common.ajax({
+                    url: "/InfoManage/Message/ReadAllMsgStatus?type=1",
+                    type: "POST",
+                    success: function () {
+                        // 修改内容：全部标记已读成功提示
+                        common.modalMsg('操作成功', 'success');
+                        loadMessageList();
+                    }
+                });
+            });
+            $('#messageClearBtn3').click(function () {
+                common.ajax({
+                    url: "/InfoManage/Message/ReadAllMsgStatus?type=2",
+                    type: "POST",
+                    success: function () {
+                        // 修改内容：全部标记已读成功提示
+                        common.modalMsg('操作成功', 'success');
+                        loadMessageList();
+                    }
+                });
+            });
+            // $('#messageClearBtn1').click(function () {
+            //     var thisObj = $(this);
+            //     common.ajax({
+            //         url: "/InfoManage/Message/ReadAllMsgStatus?type=0",
+            //         type: "POST",
+            //         success: function () {
+            //             $('#message1').html("通知(0)");
+            //             $(thisObj).parents('.layui-tab-item').addClass('show-empty');
+            //         }
+            //     });
+            // });
+            // $('#messageClearBtn2').click(function () {
+            //     var thisObj = $(this);
+            //     common.ajax({
+            //         url: "/InfoManage/Message/ReadAllMsgStatus?type=1",
+            //         type: "POST",
+            //         success: function () {
+            //             $('#message2').html("私信(0)");
+            //             $(thisObj).parents('.layui-tab-item').addClass('show-empty');
+            //         }
+            //     });
+            // });
+            // $('#messageClearBtn3').click(function () {
+            //     var thisObj = $(this);
+            //     common.ajax({
+            //         url: "/InfoManage/Message/ReadAllMsgStatus?type=2",
+            //         type: "POST",
+            //         success: function () {
+            //             $('#message3').html("待办(0)");
+            //             // $(thisObj).parents('.layui-tab-item').addClass('show-empty');
+            //         }
+            //     });
+            // });
+        });
+    </script>
+</head>
+<body>
+    <div class="layui-card" style="box-shadow: none;border: none;">
+        <div class="layui-tab layui-tab-brief">
+            <ul class="layui-tab-title" style="text-align: center;">
+                <li class="layui-this" id="message1"></li>
+                <li id="message2" class="layui-hide"></li>
+                <li id="message3"></li>
+            </ul>
+            <div class="layui-tab-content" style="padding: 0;">
+                <!-- tab1 -->
+                <div class="layui-tab-item layui-show">
+                    <div class="message-list" id="list1">
+                    </div>
+                    <!-- 列表为空 -->
+                    <div class="message-list-empty">
+                        <i class="layui-icon layui-icon-notice"></i>
+                        <div>没有通知</div>
+                    </div>
+                    <a id="messageClearBtn1" class="message-btn-clear">全部标记已读</a>
+                </div>
+                <!-- tab2 -->
+                <div class="layui-tab-item">
+                    <div class="message-list" id="list2">
+                    </div>
+                    <!-- 列表为空 -->
+                    <div class="message-list-empty">
+                        <i class="layui-icon layui-icon-dialogue"></i>
+                        <div>没有私信</div>
+                    </div>
+                    <a id="messageClearBtn2" class="message-btn-clear">全部标记已读</a>
+                </div>
+                <!-- tab3 -->
+                <div class="layui-tab-item">
+                    <div class="message-list" id="list3">
+                    </div>
+                    <!-- 列表为空 -->
+                    <div class="message-list-empty">
+                        <i class="layui-icon layui-icon-flag"></i>
+                        <div>没有待办</div>
+                    </div>
+                    <a id="messageClearBtn3" class="message-btn-clear">全部标记已读</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
