@@ -1,0 +1,346 @@
+@{
+ViewBag.Title = "Form";
+Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'common', 'commonForm', 'controls'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            commonForm = layui.commonForm,
+            controls = layui.controls;
+        var keyValue = $.request("keyValue");
+        var module = $.request("module");
+        var cout = 0;
+        var lastRow = null;
+        var tokenMap = {
+            '{loginUser}': '登录用户',
+            '{loginRole}': '登录角色',
+            '{loginOrg}': '登录部门'
+        };
+
+        $(function () {
+            initControl();
+            if (!!keyValue) {
+                var tempdata = common.parentWindow().layui.table.cache.currentTableId;
+                var Filters = [];
+                for (var i = 0; i < tempdata.length; i++) {
+                    if (keyValue == tempdata[i].F_Id) {
+                        Filters = JSON.parse(tempdata[i].Filters);
+                        $('#Description').val(tempdata[i].Description);
+                        break;
+                    }
+                }
+                for (var i = 0; i < Filters.length; i++) {
+                    addRule();
+                    $('#fields' + i).val(Filters[i].Key);
+                    $('#symbol' + i).val(Filters[i].Contrast);
+                    var val = Filters[i].Value;
+                    var text = Filters[i].Text;
+                    if (tokenMap[val]) text = tokenMap[val];
+                    else if (tokenMap[text]) { val = text; text = tokenMap[text]; }
+                    form.render('select');
+                    applyValueEditor(i, { value: val, text: text });
+                }
+            } else {
+                addRule();
+            }
+            form.render();
+        });
+        wcLoading.close();
+
+        function initControl() {
+            var preservedOptions = $("#fields").find('option').clone();
+            common.ajax({
+                url: "/SystemManage/ModuleFields/GetSelectJson?moduleId=" + module,
+                async: false,
+                success: function (data) {
+                    $("#fields").empty();
+                    preservedOptions.each(function () { $("#fields").append($(this)); });
+                    $.each(data || [], function (i) {
+                        var value = data[i].id || data[i].F_Id || data[i].Id;
+                        if ($("#fields option[value='" + value + "']").length) return;
+                        $("#fields").append(
+                            $("<option></option>").val(value)
+                                .html(data[i].text || data[i].F_FullName || data[i].Name)
+                                .attr('data-template', data[i].template || '')
+                                .attr('data-refer-type', data[i].referType)
+                        );
+                    });
+                    form.render("select");
+                }
+            });
+        }
+
+        function addRule() {
+            var html = $("#divInputTemplate").prop("outerHTML")
+                .replace(/条件规则/g, "条件规则" + (cout + 1))
+                .replace(/fields/g, "fields" + cout)
+                .replace(/symbol/g, "symbol" + cout)
+                .replace(/lookname/g, "lookname" + cout)
+                .replace(/divInputTemplate/g, "divInput" + cout)
+                .replace(/values/g, "values" + cout);
+            $(html).removeClass("layui-hide").appendTo('#ruledata');
+            applyValueEditor(cout);
+            cout++;
+            form.render();
+        }
+
+        function applyValueEditor(index, saved) {
+            var $row = $('#divInput' + index);
+            if (!$row.length) return;
+            var $opt = $('#fields' + index).find('option:selected');
+            var code = $opt.val() || '';
+            var template = {};
+            try { template = JSON.parse($opt.attr('data-template') || '{}') || {}; } catch (e) { template = {}; }
+            var referType = $opt.attr('data-refer-type');
+            var field = { F_EnCode: code, F_ReferType: referType };
+            var $host = $row.find('.compare-host');
+            var cfg = {};
+            var kind;
+
+            if (code === '{loginUser}') {
+                kind = 'tableSelect';
+                field.F_EnCode = 'F_RealName';
+                field.F_ReferType = 1;
+                cfg.sameApi = false;
+                cfg.checkedKey = 'F_Id';
+                cfg.table = {
+                    url: '/SystemOrganize/User/GetListJson',
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                        { field: 'F_Account', title: '账户' },
+                        { field: 'F_RealName', title: '姓名' },
+                        { field: 'F_CompanyName', title: '公司名称' },
+                        { field: 'F_OrganizeName', title: '部门名称' }]],
+                    params: {}
+                };
+            } else if (code === '{loginRole}') {
+                kind = 'tableSelect';
+                field.F_EnCode = 'F_FullName';
+                field.F_ReferType = 1;
+                cfg.sameApi = false;
+                cfg.checkedKey = 'F_Id';
+                cfg.table = {
+                    url: '/SystemOrganize/Role/GetSelectJson',
+                    cols: [[{ type: 'checkbox', fixed: 'left' },
+                        { field: 'F_FullName', title: '角色名称' },
+                        {
+                            field: 'F_Type', title: '角色类型',
+                            templet: function (d) {
+                                return (top.clients.dataItems["RoleType"] || {})[d.F_Type] || '';
+                            }
+                        },
+                        { field: 'F_CompanyName', title: '归属公司' }]],
+                    params: {}
+                };
+            } else if (code === '{loginOrg}') {
+                kind = 'tableSelect';
+                field.F_ReferType = 5;
+                $.extend(cfg, common.tableSelectUtil.buildConfig({
+                    dataname: 'base_employeeinfo_organize',
+                    referType: 5
+                }));
+            } else {
+                kind = controls.fieldControl.type(template, field, { scene: 'form' }) || 'input';
+                if (kind === 'date') {
+                    var dt = template.datatype;
+                    cfg.dateType = dt === 'datetime' || dt === 'datetime2' ? 'datetime' : (dt === 'time' || dt === 'year' || dt === 'month' ? dt : 'date');
+                }
+            }
+
+            var valueVal = (saved && saved.value) || '';
+            var textVal = (saved && saved.text) || '';
+            if (kind === 'tableSelect' && valueVal) cfg.selected = String(valueVal).split(',').filter(Boolean);
+            controls.fieldControl.render({
+                elem: $host,
+                type: kind,
+                template: template,
+                field: field,
+                value: (kind === 'tableSelect' || kind === 'select') ? valueVal : (textVal || valueVal),
+                config: cfg,
+                onChange: function (value, display) {
+                    $('#values' + index).val(value == null ? '' : value);
+                    lastRow = index;
+                }
+            });
+            var api = $host.data('fieldControl');
+            if (api && (kind === 'tableSelect' || kind === 'select') && (valueVal || textVal)) {
+                api.setValue(valueVal, textVal);
+            }
+            if (valueVal) $('#values' + index).val(valueVal);
+        }
+
+        function readRow(i) {
+            var $host = $('#divInput' + i).find('.compare-host');
+            var api = $host.data('fieldControl');
+            var text = '', value = $('#values' + i).val() || '';
+            if (api) {
+                value = value || api.getValue() || '';
+                var inst = api.instance;
+                if (inst && inst.getValue) text = inst.getValue('nameStr') || '';
+                if (!text) {
+                    var $inp = typeof api.input === 'function' ? api.input() : $();
+                    text = ($inp && $inp.val()) || '';
+                }
+            }
+            return { text: text || value, value: value || text };
+        }
+
+        $('#NF-add').on('click', addRule);
+
+        $(document).on('click', '.rule-del', function () {
+            $(this).closest('[id^="divInput"]').remove();
+            form.render();
+        });
+
+        $(document).on('focus click', '#ruledata input, #ruledata textarea, #ruledata .field-control-select', function () {
+            var id = $(this).closest('[id^="divInput"]').attr('id') || '';
+            lastRow = id.replace('divInput', '');
+        });
+
+        $(document).on('click', '.login-token', function (e) {
+            e.preventDefault();
+            var text = $(this).text();
+            var val = $(this).attr('data-value');
+            var index = lastRow;
+            if (index == null && cout > 0) index = String(cout - 1);
+            if (index == null) return;
+            var api = $('#divInput' + index).find('.compare-host').data('fieldControl');
+            if (api && api.setValue) api.setValue(val, text);
+            $('#values' + index).val(val);
+        });
+
+        form.on('select', function (obj) {
+            var id = $(obj.elem).attr('id') || '';
+            if (id.indexOf('fields') !== 0) return;
+            var index = id.replace('fields', '');
+            $('#values' + index).val('');
+            applyValueEditor(index);
+        });
+
+        form.verify({
+            required: function (value, item) {
+                value = $.trim(value);
+                if (!value) {
+                    if (item.tagName == 'SELECT') {
+                        $("html").animate({
+                            scrollTop: $(item).siblings(".layui-form-select").offset().top - 74
+                        }, 50);
+                    }
+                    return "必填项不能为空";
+                }
+            }
+        });
+
+        form.on('submit(saveBtn)', function (data) {
+            commonForm.formSubmit({
+                formData: data,
+                beforeRequest: function (postData) {
+                    postData.F_Id = keyValue || uuid();
+                    var Filters = [];
+                    for (var i = 0; i < cout; i++) {
+                        if (!$('#fields' + i).length) continue;
+                        var row = readRow(i);
+                        var key = $('#fields' + i).val();
+                        var temp = {
+                            Key: key,
+                            Contrast: $('#symbol' + i).val(),
+                            Text: row.text,
+                            Value: postData[key] || row.value
+                        };
+                        if (temp.Key) Filters.push(temp);
+                    }
+                    postData.Filters = JSON.stringify(Filters);
+                    var tempdata = common.parentWindow().layui.table.cache.currentTableId;
+                    if (!!keyValue) {
+                        for (var i = 0; i < tempdata.length; i++) {
+                            if (keyValue == tempdata[i].F_Id) {
+                                tempdata[i].Filters = postData.Filters;
+                                tempdata[i].Description = postData.Description;
+                                break;
+                            }
+                        }
+                    } else {
+                        tempdata.push({
+                            Operation: postData.Operation,
+                            Description: postData.Description,
+                            F_Id: postData.F_Id,
+                            Filters: postData.Filters
+                        });
+                    }
+                    common.modalMsg("操作成功", "success");
+                    common.parentWindow().layui.table.reload('currentTableId', { data: tempdata });
+                    common.modalClose();
+                }
+            });
+            return false;
+        });
+    });
+</script>
+
+<body>
+    <div class="layui-input-item layui-hide" id="divInputTemplate" style="display:flex;align-items: center">
+        <label class="layui-form-label required">条件规则</label>
+        <div class="layui-input-inline" style="width:200px;margin-right:5px">
+            <select id="fields" name="fields" lay-verify="required" lay-search>
+                <option value="">请选择</option>
+                <option value="{loginRole}">登录角色</option>
+                <option value="{loginUser}">登录用户</option>
+                <option value="{loginOrg}">登录部门</option>
+            </select>
+        </div>
+        <div class="layui-input-inline" style="width:120px;margin-right:5px">
+            <select id="symbol" name="symbol" lay-verify="required" lay-search>
+                <option value="">请选择</option>
+                <option value=">=">大于等于</option>
+                <option value="<=">小于等于</option>
+                <option value="==">等于</option>
+                <option value="!=">不等于</option>
+                <option value="contains">相似</option>
+                <option value="not contains">不似</option>
+                <option value="in">包含</option>
+                <option value="not in">排除</option>
+                <option value="intersect">任意一个</option>
+            </select>
+        </div>
+        <div class="layui-input-inline" style="flex: 1;margin-right:5px">
+            <div class="compare-host" style="width:100%;min-width:0;"></div>
+            <input type="hidden" id="values" name="values">
+        </div>
+        <button type="button" class="layui-btn layui-btn-danger rule-del" style="height:25px;line-height:25px">
+            <i class="layui-icon">&#xe67e;</i>
+        </button>
+    </div>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div style="margin-bottom:10px;text-align:end;display:flex;justify-content:space-between">
+                    <blockquote class="layui-elem-quote layui-text" style="width:100%;padding:0 20px 0 5px;margin-left:30px;display:flex;justify-content:space-between;">
+                        <div>添加数据权限规则</div>
+                        <div>
+                            <a href="javascript:;" class="login-token" data-value="{loginUser}">登录用户</a>　
+                            <a href="javascript:;" class="login-token" data-value="{loginRole}">登录角色</a>　
+                            <a href="javascript:;" class="login-token" data-value="{loginOrg}">登录部门</a>
+                        </div>
+                    </blockquote>
+                    <input id="Operation" name="Operation" lay-verify="required" value="and" disabled
+                        class="layui-hide">
+                    <button type="button" id="NF-add" class="layui-btn" style="height:25px;line-height:25px"><i
+                            class="layui-icon">&#xe654;</i></button>
+                </div>
+                <div id="ruledata" style="display: flex;flex-direction: column;gap: 10px;">
+                </div>
+                <div class="layui-form-text" style="margin-top:10px">
+                    <label class="layui-form-label">规则备注</label>
+                    <div class="layui-input-block">
+                        <textarea id="Description" name="Description" class="layui-textarea"
+                            placeholder="请输入规则备注"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

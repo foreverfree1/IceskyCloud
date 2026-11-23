@@ -1,0 +1,92 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Index.cshtml";
+}
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <fieldset class="table-search-fieldset layui-hide" id="searchField">
+            <div>
+                <form class="layui-form layui-form-pane">
+                    <div class="layui-form-item">
+                        <div class="layui-inline">
+                            <label class="layui-form-label">关键字:</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="txt_keyword" name="txt_keyword" autocomplete="off"
+                                    class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <button type="submit" class="layui-btn layui-btn-primary" lay-submit
+                                lay-filter="data-search-btn"><i class="layui-icon">&#xe615;</i> 搜 索</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </fieldset>
+        <script type="text/html" id="toolbarDemo">
+            <div class="layui-btn-container" id="toolbar">
+                <button id="NF-removelog" authorize="yes" class="layui-btn layui-btn-sm layui-btn-danger" lay-event="removelog"><i class="layui-icon">&#xe640;</i>清空日志</button>
+            </div>
+        </script>
+        <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+    </div>
+</div>
+<script>
+    layui.use(['jquery', 'form', 'table', 'commonTable', 'common', 'optimizeSelectOption'], function () {
+        var $ = layui.jquery,
+            form = layui.form,
+            table = layui.table, commonTable = layui.commonTable
+        common = layui.common;
+
+        commonTable.rendertable({
+            elem: '#currentTableId',
+            id: 'currentTableId',
+            url: '/SystemSecurity/ApiLog/GetGridJson',
+            cols: [[
+                //此处需修改
+                { field: 'F_AppId', title: '应用标识', sort: true, filter: true },
+                { field: 'F_AppName', title: '应用名称', sort: true, filter: true },
+                { field: 'F_RequestUrl', title: '请求地址', sort: true, filter: true },
+                { field: 'F_RequestParams', title: '请求参数',width:250, sort: true, filter: true },
+                { field: 'F_ResponseResult', title: '返回结果',width:250, sort: true, filter: true },
+                { field: 'F_RequestTime', title: '请求时间', sort: true, filter: true },
+                { field: 'F_ReturnTime', title: '返回时间', sort: true, filter: true }
+            ]]
+        });
+        // 监听搜索操作
+        form.on('submit(data-search-btn)', function (data) {
+            //执行搜索重载
+            commonTable.reloadtable({
+                elem: 'currentTableId',
+                curr: 1,
+                where: { keyword: data.field.txt_keyword }
+            });
+            return false;
+        });/**
+
+        * toolbar监听事件
+        */
+        table.on('toolbar(currentTableFilter)', function (obj) {
+            if (obj.event === 'removelog') {  // 监听删除操作
+                common.modalOpen({
+                    title: "清空日志",
+                    url: "/SystemSecurity/ApiLog/RemoveLog",
+                    width: "380px",
+                    height: "380px",
+                });
+            }
+            else if (obj.event === 'TABLE_SEARCH') {
+                var _that = $("#searchField");
+                if (_that.hasClass("layui-hide")) {
+                    _that.removeClass('layui-hide');
+                } else {
+                    _that.addClass('layui-hide');
+                }
+                table.resize();
+            }
+            return false;
+        });
+        wcLoading.close();
+        
+    });
+</script>

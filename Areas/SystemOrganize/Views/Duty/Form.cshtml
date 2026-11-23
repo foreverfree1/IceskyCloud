@@ -1,0 +1,194 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<script>
+    layui.use(['jquery', 'form', 'common', 'optimizeSelectOption','customSelect', 'tableSelect'], function () {
+        var form = layui.form,
+            $ = layui.$,
+            common = layui.common,
+            tableSelect = layui.tableSelect,
+            customSelect = layui.customSelect;
+        var keyValue = $.request("keyValue");
+        //权限字段
+        common.authorizeFields('adminform');
+        $(function () {
+            initControl();
+            if (!!keyValue) {
+                common.ajax({
+                    url: "/SystemOrganize/Duty/GetFormJson",
+                    dataType: "json",
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('adminform', data);
+                    }
+                });
+            }
+            form.render();
+        });
+        wcLoading.close();
+        function initControl() {
+            $("#F_CompanyId").bindSelect({
+                url: "/SystemOrganize/SystemSet/GetListJson",
+                id: "F_Id",
+                text: "F_CompanyName"
+            });
+            // var tree=[];
+            // common.ajax({
+            //     type: "Get",
+            //     async:false,
+            //     url: '/SystemOrganize/Organize/GetTreeSelectJson',
+            //     success:function(data){
+            //         data.forEach(obj => {
+            //             obj.title = obj.text.trim();
+            //         });
+            //         tree=buildTree(data,"0");
+            //     }
+            // })
+            // customSelect.render({
+            //     el: 'F_Organization',
+            //     data:tree,
+            //     type: 'radio',
+            //     checked: function (obj) {
+            //         $("#F_Organization").val(obj.combData.values);
+            //         $("#F_Organization").next().val(obj.combData.idents);
+            //     }
+            // })
+            
+            // const table = {
+            //     url: `/Public/GetReferenceListJson?enCode=base_employeeinfo_organize`,
+            //     cols: [[{ type: 'radio', fixed: 'left' }]],
+            //     params: {}
+            // }
+            // tableSelect.render({
+            //     elem: '#F_Organization',
+            //     checkedKey: 'F_Id',
+            //     searchKey: 'keyword',
+            //     searchPlaceholder: '关键词搜索',
+            //     height: '200',
+            //     sameApi: true,
+            //     table,
+            //     istree: true,
+            //     done: function (elem, checkStatus) {
+            //         // 显示名称
+            //         var text = checkStatus.data.map(item => item.F_FullName).join(',');
+            //         // 真实值
+            //         var val = checkStatus.data.map(item => item.F_Id).join(',');
+            //         // 给输入框赋值
+            //         $(elem).val(text);
+            //         $('#F_OrganizationId').val(val);
+            //     }
+            // });
+        }
+        function buildTree(items, parentId = null) {
+        return items.filter(item => item.parentId === parentId).map(item => ({
+            ...item,
+            children: buildTree(items, item.id) // 递归调用自身以构建子节点列表
+        }));
+    }
+        //select验证
+        form.verify({
+            required: function (value, item) {
+                var msg = "必填项不能为空";
+                value = $.trim(value);
+                var isEmpty = !value || value.length < 1;
+                // 当前验证元素是select且为空时,将页面定位至layui渲染的select处，或自定义想定位的位置
+                if (item.tagName == 'SELECT' && isEmpty) {
+                    $("html").animate({
+                        scrollTop: $(item).siblings(".layui-form-select").offset().top - 74
+                    }, 50);
+                }
+                if (isEmpty) {
+                    return msg;
+                }
+            }
+        });
+        //监听提交
+        form.on('submit(saveBtn)', function (data) {
+                var postData = data.field;
+                if (!postData["F_EnabledMark"]) postData["F_EnabledMark"] = false;
+                common.submitForm({
+                    url: "/SystemOrganize/Duty/SubmitForm?keyValue=" + keyValue,
+                    param: postData,
+                    success: function () {
+                        common.parentreload("data-search-btn");
+                    }
+                })
+            return false;
+        });
+    });
+</script>
+<style type="text/css">
+    .layui-anim-upbit   {
+        z-index:1;
+    }
+</style>
+<body>
+    <div class="layuimini-container">
+        <div class="layuimini-main">
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">归属公司</label>
+                    <div class="layui-input-block">
+                        <select id="F_CompanyId" name="F_CompanyId" lay-verify="required" lay-search>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">岗位名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_FullName" name="F_FullName" maxlength="50" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+                <!-- <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">所属组织</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_Organization" name="F_Organization" maxlength="50" lay-verify="required" readonly class="layui-input ">
+                        <input type="hidden" id="F_OrganizationId" name="F_OrganizationId" />
+                    </div>
+                </div> -->
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">岗位编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="F_EnCode" name="F_EnCode" maxlength="50" lay-verify="required" class="layui-input ">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">岗位职责</label>
+                    <div class="layui-input-block">
+                        <textarea id="F_Duty" name="F_Duty" class="layui-textarea" placeholder="请输入岗位职责"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">人员编制</label>
+                    <div class="layui-input-block">
+                        <input type="number" id="F_Staffing" name="F_Staffing" maxlength="50" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label required">显示顺序</label>
+                    <div class="layui-input-block">
+                        <input type="number" pattern="[0-9]*" id="F_SortCode" name="F_SortCode" lay-verify="required|number" oninput="if(value.length>8)value=value.slice(0,8)" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <label class="layui-form-label">选项</label>
+                    <div class="layui-input-block">
+                        <input type="checkbox" name="F_EnabledMark" id="F_EnabledMark" checked="" value="true" title="有效标识">
+                    </div>
+                </div>
+                <div class="layui-form-item layui-form-text layui-hide">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <textarea id="F_Description" name="F_Description" class="layui-textarea" placeholder="请输入备注"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item layui-hide">
+                    <button class="layui-btn site-demo-active" lay-submit id="submit" lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>

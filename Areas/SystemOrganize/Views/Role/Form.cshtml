@@ -1,0 +1,355 @@
+﻿@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Form.cshtml";
+}
+<link href="~/css/stepcss.css" rel="stylesheet" />
+<script>
+    layui.use(['form', 'step', 'common', 'dtree', 'optimizeSelectOption'], function () {
+        var $ = layui.$,
+            form = layui.form,
+            dtree = layui.dtree,
+            common = layui.common,
+            step = layui.step;
+        var keyValue = $.request("keyValue");
+        //权限字段
+        common.authorizeFields('stepForm');
+        step.render({
+            elem: '#stepForm',
+            filter: 'stepForm',
+            width: '85%', //设置容器宽度
+            stepWidth: '510px',
+            height: 'auto',
+            stepItems: [
+                { title: '填写角色信息' },
+                { title: '设置功能权限'}, 
+                { title: '设置字段权限'},
+                { title: '设置打印权限'},
+                
+            ]
+        });
+        //$('.lay-step').css('margin-left', '50px');
+        $(function () {
+            initControl();
+            if (!!keyValue) {
+                common.ajax({
+                    url: "/SystemOrganize/Role/GetFormJson",
+                    dataType: "json",
+                    data: { keyValue: keyValue },
+                    async: false,
+                    success: function (data) {
+                        common.val('stepForm', data);
+                    }
+                });
+            }
+            form.render();
+        });
+        wcLoading.close();
+        function initControl() {
+            $("#F_CompanyId").bindSelect({
+                url: "/SystemOrganize/SystemSet/GetListJson",
+                id: "F_Id",
+                text: "F_CompanyName"
+            });
+            $("#F_Type").bindSelect({
+                data: top.clients.dataItems['RoleType'],
+                id: "",
+            });
+        }
+        //select验证
+        form.verify({
+            required: function (value, item) {
+                var msg = "必填项不能为空";
+                value = $.trim(value);
+                var isEmpty = !value || value.length < 1;
+                // 当前验证元素是select且为空时,将页面定位至layui渲染的select处，或自定义想定位的位置
+                if (item.tagName == 'SELECT' && isEmpty) {
+                    $("html").animate({
+                        scrollTop: $(item).siblings(".layui-form-select").offset().top - 74
+                    }, 50);
+                }
+                if (isEmpty) {
+                    return msg;
+                }
+            }
+        });
+        // 初始化树
+        var DemoTree1 = dtree.render({
+            elem: "#demoTree1",
+            width: '600px',
+            method: "GET",
+            async: false,
+            checkbar: true,
+            line: true,  // 显示树线
+            initLevel: 0,
+            icon: "-1" , // 隐藏二级图标
+            checkbarType: "p-casc",
+            scroll:"#toolbarDiv1", // 绑定div元素
+            url: "/SystemOrganize/RoleAuthorize/GetPermissionTree?v="+new Date().Format("yyyy-MM-dd hh:mm:ss"), // 使用url加载（可与data加载同时存在）
+            request: { roleId: keyValue },
+            // ★ 仅 demoTree1：btnGroup_ 分组下所有子节点取消选中时，分组节点也取消选中
+            // p-casc 模式下子集取消不会联动父级，这里在勾选完成后手动处理
+            checkbarFun: {
+                chooseDone: function (checkbarNodesParam) {
+                    setTimeout(function () {
+                        $('#demoTree1 li[data-id]').each(function () {
+                            var $li = $(this);
+                            var nodeId = $li.attr('data-id');
+                            if (!nodeId || nodeId.indexOf('btnGroup_') !== 0) return;
+
+                            // 分组自身的复选框 <i>
+                            var $groupI = $li.children('.dtree-nav-div').find('i[dtree-click="checkNodeClick"]').first();
+                            if ($groupI.length === 0) return;
+
+                            // 检查直接子节点是否有勾选
+                            var hasCheckedChild = false;
+                            $li.children('ul').children('li').each(function () {
+                                var $childI = $(this).children('.dtree-nav-div').find('i[dtree-click="checkNodeClick"]').first();
+                                if ($childI.attr('data-checked') === '1') {
+                                    hasCheckedChild = true;
+                                    return false;
+                                }
+                            });
+
+                            // 所有子节点未勾选，但分组自身仍勾选 → 取消分组勾选
+                            if (!hasCheckedChild && $groupI.attr('data-checked') === '1') {
+                                $groupI.trigger('click');
+                            }
+                        });
+                    }, 50);
+                }
+            }
+        });
+
+        var role;
+        form.on('submit(formStep)', function (data) {
+            role = data.field
+            if (!role["F_EnabledMark"]) role["F_EnabledMark"] = false;
+            step.next('#stepForm');
+            return false;
+        });
+        var moduleids = [];
+
+        // 从功能权限树(demoTree1)中收集勾选节点：
+        // 仅收集真正的模块/按钮 GUID 节点，过滤掉虚拟分组节点（btnGroup_ 开头）
+        function collectTree1Nodes() {
+            var tree1Params = dtree.getCheckbarNodesParam("demoTree1");
+            var mbIds = [];
+            for (var i = 0; i < tree1Params.length; i++) {
+                var nid = tree1Params[i].nodeId;
+                if (nid.indexOf("btnGroup_") === 0) continue; // 跳过虚拟分组节点
+                mbIds.push(nid);
+            }
+            return { mbIds: mbIds };
+        }
+
+        //第二下点击下一步加载字段权限树
+        form.on('submit(formStep2)', function (data) {
+            //获取功能按钮树,为保存按钮功能权限做准备
+            var nodes = collectTree1Nodes();
+            moduleids = nodes.mbIds;
+            // 初始化字段权限树
+            var DemoTree2 = dtree.render({
+                elem: "#demoTree2",
+                width: '600px',
+                method: "POST",
+                async: false,
+                checkbar: true,
+                line: true,  // 显示树线
+                initLevel: 0,
+                icon: "-1", // 隐藏二级图标
+                checkbarType: "p-casc",
+                scroll: "#toolbarDiv2", // 绑定div元素
+                url: "/SystemOrganize/RoleAuthorize/GetPermissionFieldsTree?v=" + new Date().Format("yyyy-MM-dd hh:mm:ss"), // 使用url加载（可与data加载同时存在）
+                request: { roleId: keyValue, moduleids: String(moduleids) }
+            }); 
+            step.next('#stepForm');
+            return false;
+        });
+        //第三下点击下一步加载操作权限树
+        form.on('submit(formStep3)', function (data) {
+            var postData = role;
+            var params = dtree.getCheckbarNodesParam("demoTree2");
+            var note = [];
+            for (var i = 0; i < params.length; i++) {
+                note.push(params[i].nodeId);
+            }
+            postData["permissionbuttonIds"] = String(moduleids);
+            postData["permissionfieldsIds"] = String(note);
+
+            // 初始化打印权限树（第4步）：勾选打印模板时父级模块向上联动勾选（all：子节点选中父级也选中）
+            // 统一交给 dtree 渲染，保持 #demoTree3 元素始终存在；后端对空 moduleids 返回空树，配合 none 显示"没有数据"
+            var DemoTree3 = dtree.render({
+                elem: "#demoTree3",
+                width: '600px',
+                method: "POST",
+                async: false,
+                checkbar: true,
+                line: true,  // 显示树线
+                initLevel: 0,
+                icon: "-1", // 隐藏二级图标
+                checkbarType: "all", // 子集选中父级也选中（从下往上联动勾选）
+                scroll: "#toolbarDiv3", // 绑定div元素
+                none: "没有数据", // 无可用数据时提示
+                url: "/SystemOrganize/RoleAuthorize/GetPermissionOptionsTree?v=" + new Date().Format("yyyy-MM-dd hh:mm:ss"), // 使用url加载（可与data加载同时存在）
+                request: { roleId: keyValue, moduleids: String(moduleids) }
+            });
+            step.next('#stepForm');
+            return false;
+        });
+        //第四下点击确认保存提交数据
+        form.on('submit(formStep4)', function (data) {
+            var postData = role;
+            var params = dtree.getCheckbarNodesParam("demoTree2");
+            var note = [];
+            for (var i = 0; i < params.length; i++) {
+                note.push(params[i].nodeId);
+            }
+            postData["permissionbuttonIds"] = String(moduleids);
+            postData["permissionfieldsIds"] = String(note);
+            // 重新从操作权限树(demoTree3)收集并分类：
+            // exportIds = 导出节点(export0_/export1_开头)，printIds = 打印模板节点(printtemplate_开头)
+            var nodes3 = collectTree3Nodes();
+            postData["permissionprintIds"] = String(nodes3.printIds);
+            common.submitForm({
+                url: "/SystemOrganize/Role/SubmitForm?keyValue=" + keyValue,
+                param: postData,
+                success: function () {
+                    common.parentreload("data-search-btn");
+                }
+            })
+            return false;
+        });
+        // 从操作权限树(demoTree3)中收集勾选节点并分类
+        function collectTree3Nodes() {
+            var tree3Params = dtree.getCheckbarNodesParam("demoTree3");
+            var printIds = [];
+            for (var i = 0; i < tree3Params.length; i++) {
+                var nid = tree3Params[i].nodeId;
+                if (nid.indexOf("printtemplate_") === 0) {
+                    nid = nid.split('printtemplate_')[1];
+                    printIds.push(nid);
+                }
+            }
+            return { printIds: printIds };
+        }
+
+        $('.pre').click(function () {
+            step.pre('#stepForm');
+        });
+    })
+</script>
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <div class="layui-carousel" id="stepForm" lay-filter="stepForm">
+            <div carousel-item>
+                <div>
+                    <form class="layui-form layuimini-form">
+                        <div class="layui-form-item layui-hide" style="margin-top:15px;">
+                            <label class="layui-form-label required">归属公司</label>
+                            <div class="layui-input-block">
+                                <select id="F_CompanyId" name="F_CompanyId" lay-verify="required" lay-search>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-hide">
+                            <label class="layui-form-label required">角色名称</label>
+                            <div class="layui-input-block">
+                                <input type="text" id="F_FullName" name="F_FullName" maxlength="50" lay-verify="required" class="layui-input" placeholder="请填写角色名称">
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-hide">
+                            <label class="layui-form-label required">角色编号</label>
+                            <div class="layui-input-block">
+                                <input id="F_EnCode" name="F_EnCode" type="text" maxlength="50" lay-verify="required" class="layui-input" placeholder="请输入角色编号" />
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-hide">
+                            <label class="layui-form-label required">角色类型</label>
+                            <div class="layui-input-block">
+                                <select id="F_Type" name="F_Type" lay-verify="required">
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-hide">
+                            <label class="layui-form-label required">显示顺序</label>
+                            <div class="layui-input-block">
+                                <input type="number" pattern="[0-9]*" id="F_SortCode" name="F_SortCode" lay-verify="required|number" oninput="if(value.length>8)value=value.slice(0,8)" autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-hide">
+                            <label class="layui-form-label">选项</label>
+                            <div class="layui-input-block">
+                                <input type="checkbox" name="F_EnabledMark" id="F_EnabledMark" checked="" value="true" title="有效标识">
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-form-text layui-hide">
+                            <label class="layui-form-label">备注</label>
+                            <div class="layui-input-block">
+                                <textarea id="F_Description" name="F_Description" class="layui-textarea" placeholder="请输入备注"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group-bottom text-right">
+                            <div class="layui-input-block">
+                                <button class="layui-btn" lay-submit lay-filter="formStep">
+                                    &emsp;下一步&emsp;
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div>
+                    <form class="layui-form layuimini-form">
+                        <div class="layui-form-item ">
+                            <div style="height: 390px;padding-left:60px;width:650px;margin:0 auto;overflow: auto;" id="toolbarDiv1">
+                                <ul id="demoTree1" class="dtree" data-id="0"></ul>
+                            </div>
+                        </div>
+                        <div class="form-group-bottom text-right">
+                            <div class="layui-input-block">
+                                <button type="button" class="layui-btn layui-btn-primary pre">上一步</button>
+                                <button class="layui-btn" lay-submit lay-filter="formStep2">
+                                    &emsp;下一步&emsp;
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div>
+                    <form class="layui-form layuimini-form">
+                        <div class="layui-form-item ">
+                            <div style="height: 390px;padding-left:60px;width:650px;margin:0 auto;overflow: auto;" id="toolbarDiv2">
+                                <ul id="demoTree2" class="dtree" data-id="0"></ul>
+                            </div>
+                        </div>
+                        <div class="form-group-bottom text-right">
+                            <div class="layui-input-block">
+                                <button type="button" class="layui-btn layui-btn-primary pre">上一步</button>
+                                <button class="layui-btn" lay-submit lay-filter="formStep3">
+                                    &emsp;下一步&emsp;
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div>
+                    <form class="layui-form layuimini-form">
+                        <div class="layui-form-item ">
+                            <div style="height: 390px;padding-left:60px;width:650px;margin:0 auto;overflow: auto;" id="toolbarDiv3">
+                                <ul id="demoTree3" class="dtree" data-id="0"></ul>
+                            </div>
+                        </div>
+                        <div class="form-group-bottom text-right">
+                            <div class="layui-input-block">
+                                <button type="button" class="layui-btn layui-btn-primary pre">上一步</button>
+                                <button class="layui-btn site-demo-active" lay-submit lay-filter="formStep4">
+                                    确认保存
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
