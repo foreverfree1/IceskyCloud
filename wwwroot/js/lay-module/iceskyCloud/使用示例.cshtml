@@ -1,0 +1,642 @@
+<!-- 创建的新文件：commonForm 全控件 + formData 动态赋值示例 -->
+<!-- 用法：把本页贴进模块表单配置，或放到带 _Form 布局的页面里打开 -->
+<style type="text/css">
+    .demo-page {
+        padding: 16px 20px 28px;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: #1d1d1f;
+    }
+
+    .demo-page .demo-hero {
+        margin-bottom: 16px;
+    }
+
+    .demo-page .demo-hero h2 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+    }
+
+    .demo-page .demo-hero p {
+        margin: 0;
+        font-size: 13px;
+        color: #86868b;
+        line-height: 1.6;
+    }
+
+    .demo-page .demo-card {
+        background: #fff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        padding: 16px 16px 8px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .demo-page .demo-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 16px;
+    }
+
+    .demo-page .demo-actions .layui-btn {
+        height: 32px;
+        line-height: 32px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: #f5f5f7;
+        color: #1d1d1f;
+        border: 0;
+    }
+
+    .demo-page .demo-actions .layui-btn-normal {
+        background: #1d1d1f;
+        color: #fff;
+    }
+
+    .demo-page .demo-json {
+        margin-top: 16px;
+        background: #f5f5f7;
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .demo-page .demo-json .demo-json-title {
+        font-size: 12px;
+        color: #86868b;
+        margin-bottom: 8px;
+    }
+
+    .demo-page .demo-json pre {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #1d1d1f;
+    }
+
+    .demo-page .layuimini-form > .layui-form-item > .layui-col-md3 > .layui-form-label,
+    .demo-page .layuimini-form > .layui-form-item > .layui-col-md6 > .layui-form-label,
+    .demo-page .layuimini-form > .layui-form-item > .layui-col-md12 > .layui-form-label {
+        width: 88px !important;
+    }
+</style>
+<script>
+    var keyValue = "";
+    var isEnabled = true;
+
+    layui.use(['jquery', 'form', 'layer', 'table', 'common', 'commonForm', 'commonTable'], function () {
+        var $ = layui.$;
+        var form = layui.form;
+        var layer = layui.layer;
+        var table = layui.table;
+        var common = layui.common;
+        var commonForm = layui.commonForm;
+        var commonTable = layui.commonTable;
+
+        if (window.wcLoading && typeof wcLoading.close === 'function') wcLoading.close();
+
+        // 普通参照：品名；树表参照：组织
+        var USER_DATANAME = 'materialfoundation_sap_ref';
+        var TREE_DATANAME = 'equip_organize';
+        // 修改内容：setCustomConfig 里存实例，后面直接用
+        var formMap = null;
+        var tableMap = null;
+
+        commonForm.createForm({
+            elem: '.form-fields',
+            isEnabled: true,
+            labelWidth: 88,
+            hiddenFields: {
+                // 标题空着时，连带隐藏「标题补充」
+                F_Title: ['F_RemarkExtra']
+            },
+            data: {
+                F_Title: '初始标题',
+                F_Qty: 3,
+                F_Amount: '19.50',
+                F_Status: '草稿',
+                F_Date: '2026-10-01',
+                F_DateTime: '2026-10-01 08:30:00',
+                F_Month: '2026-10',
+                F_Year: '2026',
+                F_Type: '1',
+                F_Tags: '1,2',
+                F_ProductName: '',
+                F_DeptName: '',
+                F_OrganizeId: '',
+                F_Image: '',
+                F_Remark: '初始备注',
+                F_RemarkExtra: '标题有值时才显示'
+            },
+            fields: [
+                { id: 'F_Title', label: '标题', type: 'input', placeholder: '普通输入框', md: 3 },
+                { id: 'F_Qty', label: '数量', type: 'number', placeholder: '整数', md: 3, _template: { datatype: 'int' } },
+                { id: 'F_Amount', label: '金额', type: 'number', placeholder: '小数', md: 3, _template: { datatype: 'decimal', digits: 2 } },
+                { id: 'F_Status', label: '状态', type: 'input', md: 3, disabled: true },
+
+                { id: 'F_Date', label: '日期', type: 'date', md: 3, _template: { datatype: 'date' } },
+                { id: 'F_DateTime', label: '日期时间', type: 'date', md: 3, _template: { datatype: 'datetime' } },
+                { id: 'F_Month', label: '月份', type: 'date', md: 3, _template: { datatype: 'month' } },
+                { id: 'F_Year', label: '年份', type: 'date', md: 3, _template: { datatype: 'year' } },
+
+                {
+                    id: 'F_Type', label: '类型', type: 'select', md: 3, placeholder: '请选择',
+                    options: [
+                        { name: '草稿', value: '1' },
+                        { name: '进行中', value: '2' },
+                        { name: '已完成', value: '3' }
+                    ]
+                },
+                {
+                    id: 'F_Tags', label: '多选', type: 'select', md: 3, placeholder: '可多选',
+                    _raw: { F_ReferType: 3 },
+                    options: [
+                        { name: '棉', value: '1' },
+                        { name: '涤', value: '2' },
+                        { name: '氨', value: '3' }
+                    ]
+                },
+                {
+                    id: 'F_ProductName', label: '参照', type: 'tableSelect', md: 3, placeholder: '点开选品名',
+                    _raw: { F_ReferType: 0 },
+                    _template: { dataname: USER_DATANAME }
+                },
+                {
+                    id: 'F_DeptName', label: '树表', type: 'tableSelect', md: 3, placeholder: '点开选组织', checkedKey: 'F_Id',
+                    _raw: { F_ReferType: 4 },
+                    _template: { dataname: TREE_DATANAME }
+                },
+                { id: 'F_OrganizeId', label: '组织Id', type: 'input', hide: true },
+                // 修改内容：多图，length/50 = maxCount（150 → 最多 3 张）
+                { id: 'F_Image', label: '图片', type: 'imageUpload', md: 3, _template: { length: 150 } },
+                // { id: 'F_Image', label: '图片', type: 'imageUpload', md: 3, _template: { length: 50 } },
+                { id: 'F_RemarkExtra', label: '标题补充', type: 'input', md: 6, placeholder: 'F_Title 为空时这一项会藏起来' },
+                { id: 'F_Remark', label: '备注', type: 'textarea', md: 12, placeholder: '多行文本', _template: { rows: 3 } }
+            ],
+            setCustomConfig: function (item, col) {
+                // 修改内容：存表单控件实例（item.controlMap.字段名）
+                formMap = item.controlMap;
+                if (item.id === 'F_ProductName') {
+                    col.searchPlaceholder = '品名 / 编码';
+                }
+                if (item.id === 'F_DeptName') {
+                    col.searchPlaceholder = '组织名称';
+                    col.on.change = function (elem, rows) {
+                        var header = commonForm.formData || {};
+                        var row = rows && rows[0];
+                        header.F_OrganizeId = row ? (row.F_Id || '') : '';
+                    };
+                }
+            },
+            done: function () {
+                var header = commonForm.formData;
+                bindDemoButtons(header);
+                dumpForm(header);
+                if (typeof watch === 'function') {
+                    watch(header, function () { dumpForm(header); });
+                    watch(function () { return header.F_Title; }, function (val) {
+                        header.F_Status = val ? '已填写' : '空';
+                    });
+                }
+            }
+        });
+
+        function dumpForm(header) {
+            var copy = {};
+            Object.keys(header || {}).forEach(function (key) {
+                copy[key] = header[key];
+            });
+            $('#formJson').text(JSON.stringify(copy, null, 2));
+        }
+
+        var DEPT_BOSS = { id: '08dec433-b299-4dc0-87b0-219845b48a69', name: '总经理' };
+        var DEPT_SHOP = { id: '08dec43c-9c38-4726-89dc-0b609dfe5d1f', name: '生产一车间' };
+
+        function deptSelect() {
+            return $('#F_DeptName').data('tableSelect');
+        }
+
+        function setDept(item) {
+            var header = commonForm.formData || {};
+            header.F_DeptName = item.name;
+            var ts = deptSelect();
+            if (ts) ts.update({ selected: [item.id] });
+        }
+
+        function bindDemoButtons(header) {
+            $('#btnFillAll').on('click', function () {
+                header.F_Title = '一次赋全部';
+                header.F_Qty = 12;
+                header.F_Amount = '88.00';
+                header.F_Date = '2026-10-23';
+                header.F_DateTime = '2026-10-23 12:00:00';
+                header.F_Month = '2026-10';
+                header.F_Year = '2026';
+                header.F_Type = '2';
+                header.F_Tags = '1,3';
+                header.F_ProductName = '单面天丝';
+                setDept(DEPT_SHOP);
+                header.F_Remark = '这是用 commonForm.formData 写进去的备注';
+                header.F_RemarkExtra = '标题有值，这一项会显示';
+                // 修改内容：多图用逗号分隔
+                header.F_Image = '/file/local/20261023/202610231302425566.jpg,/file/local/20261023/202610231315116075.png';
+                // header.F_Image = '/file/local/20261023/202610231302425566.jpg';
+                layer.msg('已写入 formData，上面的控件应一起变');
+            });
+
+            $('#btnTitle').on('click', function () {
+                header.F_Title = '只改标题 ' + new Date().toLocaleTimeString();
+            });
+
+            $('#btnDate').on('click', function () {
+                header.F_Date = '2026-12-31';
+                header.F_DateTime = '2026-12-31 23:59:59';
+                header.F_Month = '2026-12';
+                header.F_Year = '2027';
+            });
+
+            $('#btnSelect').on('click', function () {
+                header.F_Type = header.F_Type === '3' ? '1' : '3';
+            });
+
+            $('#btnUser').on('click', function () {
+                header.F_ProductName = '全涤汗布';
+            });
+            $('#btnTree').on('click', function () {
+                setDept(header.F_DeptName === DEPT_BOSS.name ? DEPT_SHOP : DEPT_BOSS);
+            });
+            $('#btnImage').on('click', function () {
+                // 修改内容：多图
+                header.F_Image = '/file/local/20261023/202610231302425566.jpg,/file/local/20261023/202610231315116075.png';
+                // header.F_Image = '/file/local/20261023/202610231315116075.png';
+            });
+
+            $('#btnClear').on('click', function () {
+                header.F_Title = '';
+                header.F_Qty = '';
+                header.F_Amount = '';
+                header.F_Date = '';
+                header.F_DateTime = '';
+                header.F_Month = '';
+                header.F_Year = '';
+                header.F_Type = '';
+                header.F_Tags = '';
+                header.F_ProductName = '';
+                header.F_DeptName = '';
+                var ts = deptSelect();
+                if (ts) ts.update({ selected: [] });
+                header.F_Remark = '';
+                header.F_RemarkExtra = '';
+                header.F_Image = '';
+            });
+
+            $('#btnRead').on('click', function () {
+                layer.alert('<pre style="text-align:left;white-space:pre-wrap;">' + $('#formJson').text() + '</pre>', {
+                    title: '当前 commonForm.formData',
+                    area: '520px'
+                });
+            });
+
+            // 修改内容：表单启用/禁用，写法与表格相同：formMap.字段名.update({ disabled: true })
+            $('#btnLockTitle').on('click', function () {
+                if (!formMap) return;
+                formMap.F_Title.update({ disabled: true });
+                layer.msg('标题已禁用');
+            });
+            $('#btnLockType').on('click', function () {
+                if (!formMap) return;
+                formMap.F_Type.update({ disabled: true });
+                layer.msg('类型下拉已禁用');
+            });
+            $('#btnLockUser').on('click', function () {
+                if (!formMap) return;
+                formMap.F_ProductName.update({ disabled: true });
+                layer.msg('参照已禁用');
+            });
+            $('#btnLockImage').on('click', function () {
+                if (!formMap) return;
+                formMap.F_Image.update({ disabled: true });
+                layer.msg('图片已禁用');
+            });
+            $('#btnUnlockForm').on('click', function () {
+                if (!formMap) return;
+                formMap.F_Title.update({ disabled: false });
+                formMap.F_Type.update({ disabled: false });
+                formMap.F_ProductName.update({ disabled: false });
+                formMap.F_Image.update({ disabled: false });
+                layer.msg('已解开（标题 / 类型 / 参照 / 图片）');
+            });
+            $('#btnRequireTitle').on('click', function () {
+                if (!formMap) return;
+                formMap.F_Title.update({ required: true });
+                layer.msg('标题已设为必填');
+            });
+            $('#btnUnrequireTitle').on('click', function () {
+                if (!formMap) return;
+                formMap.F_Title.update({ required: false });
+                layer.msg('标题已取消必填');
+            });
+        }
+
+        var demoRows = [
+            { F_Id: 'r1', F_Title: '第一行', F_Qty: 3, F_Date: '2026-10-01', F_DateTime: '2026-10-01 08:30:00', F_Type: '1', F_Tags: '1,2', F_ProductName: '', F_DeptName: '', F_Image: '', F_Remark: '备注一' },
+            { F_Id: 'r2', F_Title: '第二行', F_Qty: 5, F_Date: '2026-10-02', F_DateTime: '2026-10-02 09:00:00', F_Type: '2', F_Tags: '3', F_ProductName: '', F_DeptName: '', F_Image: '', F_Remark: '备注二' }
+        ];
+        function listField(code, name, tpl, extra) {
+            return $.extend({
+                F_EnCode: code,
+                F_FullName: name,
+                F_EnabledMark: 1,
+                F_Template: $.extend({ islist: true, islistupdate: true }, tpl)
+            }, extra || {});
+        }
+        function dumpTable() {
+            $('#tableJson').text(JSON.stringify(table.cache.demoEditTable || demoRows, null, 2));
+        }
+        commonTable.createtable({
+            elem: '#demoEditTable',
+            id: 'demoEditTable',
+            tableFilter: 'demoTableFilter',
+            data: demoRows,
+            search: false,
+            page: false,
+            height: 280,
+            toolbar: '#demoTableToolbar',
+            defaultToolbar: [],
+            isEnabled: true,
+            excludeEditTypes: [],
+            cols: [[{ type: 'checkbox', width: 50, fixed: 'left' }]],
+            fields: [
+                listField('F_Title', '标题', { datatype: 'nvarchar' }),
+                listField('F_Qty', '数量', { datatype: 'int' }),
+                listField('F_Date', '日期', { datatype: 'date' }),
+                listField('F_DateTime', '日期时间', { datatype: 'datetime' }),
+                listField('F_Type', '类型', {
+                    datatype: 'nvarchar',
+                    data: [
+                        { name: '草稿', value: '1' },
+                        { name: '进行中', value: '2' },
+                        { name: '已完成', value: '3' }
+                    ]
+                }),
+                listField('F_Tags', '多选', {
+                    datatype: 'nvarchar',
+                    data: [
+                        { name: '棉', value: '1' },
+                        { name: '涤', value: '2' },
+                        { name: '氨', value: '3' }
+                    ]
+                }, { F_ReferType: 3 }),
+                listField('F_ProductName', '参照', { dataname: USER_DATANAME }, { F_ReferType: 0 }),
+                listField('F_DeptName', '树表', { dataname: TREE_DATANAME }, { F_ReferType: 4 }),
+                // 修改内容：多图，length/50 = maxCount
+                listField('F_Image', '图片', { datatype: 'image', length: 150 }),
+                // listField('F_Image', '图片', { datatype: 'image', length: 50 }),
+                listField('F_Remark', '备注', { datatype: 'nvarchar', length: 'max' })
+            ],
+            setCustomConfig: function (col) {
+                // 修改内容：存表格列实例（col.controlMap.字段名）
+                tableMap = col.controlMap;
+                if (col.field === 'F_ProductName') col.config.searchPlaceholder = '品名 / 编码';
+                if (col.field === 'F_DeptName') col.config.searchPlaceholder = '组织名称';
+            },
+            done: function () {
+                dumpTable();
+            },
+            onEditTool: function () {
+                dumpTable();
+            },
+            onToolbar: function (obj) {
+                if (obj.event === 'addrow') {
+                    demoRows.push({ F_Id: 'r' + Date.now(), F_Title: '', F_Qty: '', F_Date: '', F_DateTime: '', F_Type: '', F_Tags: '', F_ProductName: '', F_DeptName: '', F_Image: '', F_Remark: '' });
+                    table.reload('demoEditTable', { data: demoRows });
+                }
+            }
+        });
+
+        // 修改内容：watch 表头类型 → 已完成则禁用数量列
+        watch(function () { return commonForm.formData.F_Type; }, function (val) {
+            if (tableMap && tableMap.F_Qty) tableMap.F_Qty.update({ disabled: String(val) === '3' });
+        });
+
+        function firstTd(field) {
+            return $('#demoEditTable').next('.layui-table-view').find('.layui-table-body tr').first().children('td[data-field="' + field + '"]');
+        }
+        function firstTr() {
+            return $('#demoEditTable').next('.layui-table-view').find('.layui-table-body tr').first();
+        }
+        function setFirst(field, val, patch) {
+            if (!tableMap || !tableMap[field]) return;
+            var $td = firstTd(field);
+            tableMap[field]($td).setValue(val);
+            if (patch) tableMap[field]($td).update(patch);
+            dumpTable();
+        }
+        $('#btnTableCol').on('click', function () {
+            if (!tableMap) return;
+            // 修改内容：数量 / 日期 / 类型 / 参照 / 树表 / 图片 整列一起赋值
+            tableMap.F_Qty.setValue([10, 11]);
+            tableMap.F_Date.setValue(['2026-12-01', '2026-12-02']);
+            tableMap.F_DateTime.setValue(['2026-12-01 08:00:00', '2026-12-02 09:00:00']);
+            tableMap.F_Type.setValue(['2', '3']);
+            tableMap.F_ProductName.setValue(['单面天丝', '全涤汗布']);
+            tableMap.F_DeptName.setValue([DEPT_SHOP.name, DEPT_BOSS.name]);
+            // 修改内容：每行多图（逗号分隔）
+            tableMap.F_Image.setValue([
+                '/file/local/20261023/202610231302425566.jpg,/file/local/20261023/202610231315116075.png',
+                '/file/local/20261023/202610231315116075.png,/file/local/20261023/202610231302425566.jpg'
+            ]);
+            // tableMap.F_Image.setValue([
+            //     '/file/local/20261023/202610231302425566.jpg',
+            //     '/file/local/20261023/202610231315116075.png'
+            // ]);
+            var $trs = $('#demoEditTable').next('.layui-table-view').find('.layui-table-body tr');
+            tableMap.F_DeptName($trs.eq(0).children('td[data-field="F_DeptName"]')).update({ selected: [DEPT_SHOP.id] });
+            tableMap.F_DeptName($trs.eq(1).children('td[data-field="F_DeptName"]')).update({ selected: [DEPT_BOSS.id] });
+            dumpTable();
+        });
+        $('#btnTableRow').on('click', function () {
+            if (!tableMap) return;
+            var $tr = $('#demoEditTable').next('.layui-table-view').find('.layui-table-body tr').first();
+            tableMap.F_Title($tr).setValue({
+                F_Title: '行赋值',
+                F_Qty: 8,
+                F_Date: '2026-12-31',
+                F_DateTime: '2026-12-31 23:59:59',
+                F_Type: '3',
+                F_ProductName: '单面天丝',
+                F_DeptName: DEPT_SHOP.name,
+                // 修改内容：多图
+                F_Image: '/file/local/20261023/202610231302425566.jpg,/file/local/20261023/202610231315116075.png',
+                // F_Image: '/file/local/20261023/202610231302425566.jpg',
+                F_Remark: '这一行一起改'
+            });
+            tableMap.F_DeptName($tr.children('td[data-field="F_DeptName"]')).update({ selected: [DEPT_SHOP.id] });
+            dumpTable();
+        });
+        $('#btnTableTitle').on('click', function () { setFirst('F_Title', '只改标题'); });
+        $('#btnTableQty').on('click', function () { setFirst('F_Qty', 9); });
+        $('#btnTableDate').on('click', function () { setFirst('F_Date', '2026-12-31'); });
+        $('#btnTableDateTime').on('click', function () { setFirst('F_DateTime', '2026-12-31 23:59:59'); });
+        $('#btnTableType').on('click', function () { setFirst('F_Type', '3'); });
+        $('#btnTableTags').on('click', function () { setFirst('F_Tags', '1,3'); });
+        $('#btnTableUser').on('click', function () { setFirst('F_ProductName', '全涤汗布'); });
+        $('#btnTableTree').on('click', function () { setFirst('F_DeptName', DEPT_BOSS.name, { selected: [DEPT_BOSS.id] }); });
+        // 修改内容：多图
+        $('#btnTableImage').on('click', function () {
+            setFirst('F_Image', '/file/local/20261023/202610231302425566.jpg,/file/local/20261023/202610231315116075.png');
+        });
+        // $('#btnTableImage').on('click', function () { setFirst('F_Image', '/file/local/20261023/202610231315116075.png'); });
+        $('#btnTableRemark').on('click', function () { setFirst('F_Remark', '只改备注'); });
+        $('#btnTableRead').on('click', function () {
+            if (!tableMap) return;
+            layer.alert('<pre style="text-align:left;white-space:pre-wrap;">' + JSON.stringify({
+                F_Title: tableMap.F_Title.getValue(),
+                F_Qty: tableMap.F_Qty.getValue(),
+                F_Date: tableMap.F_Date.getValue(),
+                F_DateTime: tableMap.F_DateTime.getValue(),
+                F_Type: tableMap.F_Type.getValue(),
+                F_ProductName: tableMap.F_ProductName.getValue(),
+                F_DeptName: tableMap.F_DeptName.getValue(),
+                F_Image: tableMap.F_Image.getValue()
+            }, null, 2) + '</pre>', { title: '整列 getValue', area: '520px' });
+        });
+        // 修改内容：列 / 行 / 格 三种禁用示例
+        $('#btnLockCol').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Qty.update({ disabled: true });
+            layer.msg('数量列整列已禁用');
+        });
+        $('#btnLockRow').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Title(firstTr()).update({ disabled: true });
+            layer.msg('第一行整行已禁用');
+        });
+        $('#btnLockCell').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Qty(firstTd('F_Qty')).update({ disabled: true });
+            layer.msg('第一行数量格已禁用');
+        });
+        $('#btnUnlockAll').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Qty.update({ disabled: false });
+            tableMap.F_Title(firstTr()).update({ disabled: false });
+            layer.msg('已解开（数量列 + 第一行）');
+        });
+        $('#btnRequireCol').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Qty.update({ required: true });
+            layer.msg('数量列已设为必填');
+        });
+        $('#btnRequireRow').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Title(firstTr()).update({ required: true });
+            layer.msg('第一行已设为必填');
+        });
+        $('#btnRequireCell').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Qty(firstTd('F_Qty')).update({ required: true });
+            layer.msg('第一行数量格已设为必填');
+        });
+        $('#btnUnrequireAll').on('click', function () {
+            if (!tableMap) return;
+            tableMap.F_Qty.update({ required: false });
+            tableMap.F_Title(firstTr()).update({ required: false });
+            tableMap.F_Qty(firstTd('F_Qty')).update({ required: false });
+            layer.msg('已取消必填（数量列 + 第一行）');
+        });
+
+        form.on('submit(saveBtn)', function (data) {
+            commonForm.formSubmit({
+                formData: data,
+                beforeRequest: function (postData) {
+                    layer.alert('<pre style="text-align:left;white-space:pre-wrap;">' + JSON.stringify(postData, null, 2) + '</pre>', {
+                        title: '提交数据（示例页不真正保存）',
+                        area: '520px'
+                    });
+                }
+            });
+            return false;
+        });
+    });
+</script>
+<body>
+    <div class="layuimini-container demo-page">
+        <div class="demo-hero">
+            <h2>commonForm 控件示例</h2>
+            <p>改 commonForm.formData.字段名，输入框 / 日期 / 下拉 / 参照 / 图片都会跟上。不要整体换成新对象。启用禁用：formMap.字段名.update({ disabled: true })。必填：formMap.字段名.update({ required: true })。</p>
+        </div>
+        <div class="demo-card">
+            <div class="demo-actions">
+                <button type="button" class="layui-btn layui-btn-normal" id="btnFillAll">一次赋全部</button>
+                <button type="button" class="layui-btn" id="btnTitle">只改标题</button>
+                <button type="button" class="layui-btn" id="btnDate">只改日期</button>
+                <button type="button" class="layui-btn" id="btnSelect">只改下拉</button>
+                <button type="button" class="layui-btn" id="btnUser">只改参照</button>
+                <button type="button" class="layui-btn" id="btnTree">只改树表</button>
+                <button type="button" class="layui-btn" id="btnImage">只改图片</button>
+                <button type="button" class="layui-btn" id="btnClear">清空</button>
+                <button type="button" class="layui-btn" id="btnRead">读出 formData</button>
+                <button type="button" class="layui-btn" id="btnLockTitle">禁用标题</button>
+                <button type="button" class="layui-btn" id="btnLockType">禁用类型</button>
+                <button type="button" class="layui-btn" id="btnLockUser">禁用参照</button>
+                <button type="button" class="layui-btn" id="btnLockImage">禁用图片</button>
+                <button type="button" class="layui-btn" id="btnUnlockForm">解开表单禁用</button>
+                <button type="button" class="layui-btn" id="btnRequireTitle">标题必填</button>
+                <button type="button" class="layui-btn" id="btnUnrequireTitle">取消标题必填</button>
+            </div>
+            <div class="layui-form layuimini-form" lay-filter="adminform">
+                <div class="form-fields"></div>
+                <div class="layui-tabform-item text-right">
+                    <button class="layui-btn" lay-submit id="submit" lay-filter="saveBtn">看提交数据</button>
+                </div>
+            </div>
+            <div class="demo-json">
+                <div class="demo-json-title">实时 formData（控件里改，这里也会变）</div>
+                <pre id="formJson">{}</pre>
+            </div>
+        </div>
+        <div class="demo-hero" style="margin-top: 28px;">
+            <h2>commonTable 可编辑表示例</h2>
+            <p>点格子改 input / 日期 / 下拉 / 参照 / 备注 / 图片。上方表头「类型」选「已完成」会锁住数量列。禁用 / 必填：tableMap.字段名.update({ disabled: true, required: true })。</p>
+        </div>
+        <div class="demo-card">
+            <div class="demo-actions">
+                <button type="button" class="layui-btn layui-btn-normal" id="btnTableCol">整列赋值（数量/日期/类型/参照/树表/图片）</button>
+                <button type="button" class="layui-btn" id="btnTableRow">第一行一起赋值</button>
+                <button type="button" class="layui-btn" id="btnLockCol">禁用数量列</button>
+                <button type="button" class="layui-btn" id="btnLockRow">禁用第一行</button>
+                <button type="button" class="layui-btn" id="btnLockCell">禁用第一行数量格</button>
+                <button type="button" class="layui-btn" id="btnUnlockAll">解开禁用</button>
+                <button type="button" class="layui-btn" id="btnRequireCol">数量列必填</button>
+                <button type="button" class="layui-btn" id="btnRequireRow">第一行必填</button>
+                <button type="button" class="layui-btn" id="btnRequireCell">第一行数量必填</button>
+                <button type="button" class="layui-btn" id="btnUnrequireAll">取消必填</button>
+                <button type="button" class="layui-btn" id="btnTableTitle">只改标题</button>
+                <button type="button" class="layui-btn" id="btnTableQty">只改数量</button>
+                <button type="button" class="layui-btn" id="btnTableDate">只改日期</button>
+                <button type="button" class="layui-btn" id="btnTableDateTime">只改日期时间</button>
+                <button type="button" class="layui-btn" id="btnTableType">只改类型</button>
+                <button type="button" class="layui-btn" id="btnTableTags">只改多选</button>
+                <button type="button" class="layui-btn" id="btnTableUser">只改参照</button>
+                <button type="button" class="layui-btn" id="btnTableTree">只改树表</button>
+                <button type="button" class="layui-btn" id="btnTableImage">只改图片</button>
+                <button type="button" class="layui-btn" id="btnTableRemark">只改备注</button>
+                <button type="button" class="layui-btn" id="btnTableRead">读出整列 getValue</button>
+            </div>
+            <table class="layui-hide" id="demoEditTable" lay-filter="demoTableFilter"></table>
+            <div class="demo-json">
+                <div class="demo-json-title">实时 table.cache（格子里改，这里也会变）</div>
+                <pre id="tableJson">[]</pre>
+            </div>
+        </div>
+    </div>
+    <script type="text/html" id="demoTableToolbar">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="addrow"><i class="layui-icon">&#xe654;</i>添加</button>
+        </div>
+    </script>
+</body>
